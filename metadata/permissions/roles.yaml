@@ -1,0 +1,23 @@
+roles:
+  owner:
+    description: Organization owner with full access
+    level: 100
+    inherits: []
+  admin:
+    description: Administrator with management access
+    level: 80
+    inherits:
+      - developer
+  developer:
+    description: Developer with workflow creation access
+    level: 60
+    inherits:
+      - viewer
+  viewer:
+    description: Read-only access
+    level: 40
+    inherits: []
+  member:
+    description: Basic member access
+    level: 20
+    inherits: []

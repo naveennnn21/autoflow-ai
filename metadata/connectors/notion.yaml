@@ -1,0 +1,25 @@
+name: Notion
+version: 1.0.0
+description: Notion workspace integration
+auth:
+  type: oauth2
+  provider: notion
+triggers:
+  page_updated:
+    description: Triggered when page content changes
+    webhook: true
+  database_item_added:
+    description: New database item created
+actions:
+  create_page:
+    description: Create new page in database
+    inputs:
+      - database_id: string
+      - title: string
+      - content: text
+  update_page:
+    description: Update existing page
+  query_database:
+    description: Query database with filters
+  append_block:
+    description: Append block to page

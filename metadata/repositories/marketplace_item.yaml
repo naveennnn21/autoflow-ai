@@ -1,0 +1,10 @@
+# Repository configuration for MarketplaceItem
+entity: MarketplaceItem
+
+searchable_fields: ["name", "description", "category"]
+filterable_fields: ["category", "type", "is_verified", "is_paid"]
+sortable_fields: ["name", "rating", "download_count", "price", "created_at"]
+unique_fields: ["slug"]
+cache_policy: high
+cache_ttl: 600
+default_ordering: "-download_count"

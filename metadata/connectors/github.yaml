@@ -1,0 +1,22 @@
+name: GitHub
+version: 1.0.0
+description: GitHub repository integration
+auth:
+  type: oauth2
+  provider: github
+triggers:
+  push:
+    description: Push to repository
+  pull_request:
+    description: PR opened/updated/merged
+  issue:
+    description: Issue created/updated
+actions:
+  create_issue:
+    description: Create new issue
+  create_pr:
+    description: Create pull request
+  merge_pr:
+    description: Merge pull request
+  add_comment:
+    description: Add comment to issue/PR

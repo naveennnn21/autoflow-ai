@@ -1,0 +1,21 @@
+name: Project
+description: Project management service
+dependencies:
+  - Organization
+  - Project
+permissions:
+  - owner
+  - admin
+  - developer
+cache_policy: medium
+methods:
+  create:
+    description: Create new project
+  update:
+    description: Update project settings
+  delete:
+    description: Delete project
+  list:
+    description: List projects with filtering
+  archive:
+    description: Archive project

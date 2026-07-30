@@ -1,0 +1,30 @@
+name: OAuthToken
+table: oauth_tokens
+description: OAuth token for external service integration
+tenant: false
+timestamps: true
+soft_delete: false
+uuid: true
+fields:
+  provider:
+    type: string
+    nullable: false
+  access_token:
+    type: text
+    nullable: false
+    sensitive: true
+  refresh_token:
+    type: text
+    nullable: true
+    sensitive: true
+  token_type:
+    type: string
+  scope:
+    type: string
+  expires_at:
+    type: datetime
+    nullable: true
+relationships:
+  user:
+    type: many_to_one
+    target: User

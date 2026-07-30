@@ -1,0 +1,35 @@
+name: APIKey
+table: api_keys
+description: API key for programmatic access
+tenant: true
+timestamps: true
+soft_delete: true
+uuid: true
+fields:
+  name:
+    type: string
+    nullable: false
+  key_prefix:
+    type: string
+    nullable: false
+  key_hash:
+    type: string
+    unique: true
+    nullable: false
+  scopes:
+    type: json
+  is_active:
+    type: boolean
+  last_used_at:
+    type: datetime
+    nullable: true
+  expires_at:
+    type: datetime
+    nullable: true
+relationships:
+  organization:
+    type: many_to_one
+    target: Organization
+  user:
+    type: many_to_one
+    target: User

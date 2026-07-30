@@ -1,0 +1,27 @@
+name: Gmail
+version: 1.0.0
+description: Google Gmail email integration
+auth:
+  type: oauth2
+  provider: google
+  scopes:
+    - https://www.googleapis.com/auth/gmail.send
+    - https://www.googleapis.com/auth/gmail.readonly
+triggers:
+  new_email:
+    description: Triggered when new email arrives
+    webhook: true
+  email_label:
+    description: Triggered when email is labeled
+    webhook: true
+actions:
+  send_email:
+    description: Send an email message
+    inputs:
+      - to: string
+      - subject: string
+      - body: text
+  search_emails:
+    description: Search emails by query
+  create_draft:
+    description: Create email draft

@@ -1,0 +1,23 @@
+name: Execution
+description: Workflow execution engine
+dependencies:
+  - Workflow
+  - AI
+permissions:
+  - owner
+  - admin
+  - developer
+cache_policy: low
+methods:
+  run:
+    description: Execute workflow
+  cancel:
+    description: Cancel running execution
+  retry:
+    description: Retry failed execution
+  pause:
+    description: Pause running execution
+  resume:
+    description: Resume paused execution
+  logs:
+    description: Get execution logs

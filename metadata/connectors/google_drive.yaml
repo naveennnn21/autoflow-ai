@@ -1,0 +1,31 @@
+name: GoogleDrive
+version: 1.0.0
+description: Google Drive file storage integration
+auth:
+  type: oauth2
+  provider: google
+  scopes:
+    - https://www.googleapis.com/auth/drive.file
+    - https://www.googleapis.com/auth/drive.readonly
+triggers:
+  file_created:
+    description: New file created
+    webhook: true
+  file_modified:
+    description: File content modified
+    webhook: true
+actions:
+  upload_file:
+    description: Upload file to Drive
+    inputs:
+      - name: string
+      - mime_type: string
+      - content: text
+  create_folder:
+    description: Create new folder
+  search_files:
+    description: Search files by name/type
+  download_file:
+    description: Download file content
+  share_file:
+    description: Set file sharing permissions

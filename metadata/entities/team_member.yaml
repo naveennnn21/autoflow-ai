@@ -1,0 +1,23 @@
+name: TeamMember
+table: team_members
+description: Maps users to teams
+tenant: false
+timestamps: false
+soft_delete: false
+uuid: true
+fields:
+  role:
+    type: string
+relationships:
+  team:
+    type: many_to_one
+    target: Team
+  user:
+    type: many_to_one
+    target: User
+constraints:
+  uq_team_user:
+    type: unique
+    columns:
+      - team_id
+      - user_id

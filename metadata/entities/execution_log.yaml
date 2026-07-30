@@ -1,0 +1,25 @@
+name: ExecutionLog
+table: execution_logs
+description: Log entry for workflow execution step
+tenant: false
+timestamps: true
+soft_delete: false
+uuid: true
+fields:
+  level:
+    type: string
+  message:
+    type: text
+    nullable: false
+  payload:
+    type: json
+  duration_ms:
+    type: integer
+    nullable: true
+relationships:
+  execution:
+    type: many_to_one
+    target: Execution
+  node:
+    type: many_to_one
+    target: WorkflowNode

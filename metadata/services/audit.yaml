@@ -1,0 +1,19 @@
+name: Audit
+description: Audit logging and compliance service
+dependencies:
+  - AuditLog
+permissions:
+  - owner
+  - admin
+cache_policy: none
+methods:
+  log:
+    description: Record audit event
+  query:
+    description: Query audit logs with filters
+  export:
+    description: Export audit logs for compliance
+  get_trail:
+    description: Get audit trail for specific resource
+  retention:
+    description: Manage log retention policies

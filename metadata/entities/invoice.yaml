@@ -1,0 +1,33 @@
+name: Invoice
+table: invoices
+description: Billing invoice
+tenant: true
+timestamps: true
+soft_delete: false
+uuid: true
+fields:
+  amount:
+    type: float
+    nullable: false
+  currency:
+    type: string
+  status:
+    type: string
+  description:
+    type: text
+    nullable: true
+  paid_at:
+    type: datetime
+    nullable: true
+  due_date:
+    type: datetime
+    nullable: true
+  metadata:
+    type: json
+relationships:
+  organization:
+    type: many_to_one
+    target: Organization
+  subscription:
+    type: many_to_one
+    target: Subscription

@@ -1,0 +1,23 @@
+name: Team
+table: teams
+description: Team group within organization
+tenant: true
+timestamps: true
+soft_delete: false
+uuid: true
+
+fields:
+  name:
+    type: string
+    nullable: false
+  description:
+    type: text
+    nullable: true
+
+relationships:
+  organization:
+    type: many_to_one
+    target: Organization
+  members:
+    type: one_to_many
+    target: TeamMember

@@ -1,0 +1,17 @@
+policies:
+  rate_limits:
+    default: 100/h
+    authenticated: 1000/h
+    premium: 10000/h
+  token_expiry:
+    access: 15m
+    refresh: 7d
+    remember: 30d
+  password_policy:
+    min_length: 8
+    require_uppercase: true
+    require_numbers: true
+    require_symbols: false
+  session:
+    max_concurrent: 5
+    timeout: 3600

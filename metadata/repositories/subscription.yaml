@@ -1,0 +1,10 @@
+# Repository configuration for Subscription
+entity: Subscription
+
+searchable_fields: ["plan_id", "status"]
+filterable_fields: ["plan_id", "status"]
+sortable_fields: ["plan_id", "status", "created_at", "current_period_end"]
+unique_fields: []
+cache_policy: medium
+cache_ttl: 300
+default_ordering: "-created_at"

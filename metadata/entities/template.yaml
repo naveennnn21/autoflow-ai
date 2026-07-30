@@ -1,0 +1,35 @@
+name: Template
+table: templates
+description: Reusable workflow template
+tenant: true
+timestamps: true
+soft_delete: true
+uuid: true
+fields:
+  name:
+    type: string
+    nullable: false
+  slug:
+    type: string
+    nullable: false
+  description:
+    type: text
+    nullable: true
+  category:
+    type: string
+  workflow_config:
+    type: json
+  is_public:
+    type: boolean
+  usage_count:
+    type: integer
+relationships:
+  organization:
+    type: many_to_one
+    target: Organization
+constraints:
+  uq_template_slug:
+    type: unique
+    columns:
+      - organization_id
+      - slug

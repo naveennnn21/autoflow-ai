@@ -1,0 +1,51 @@
+endpoints:
+  list_projects:
+    path: /projects
+    method: GET
+    auth: token
+    scopes: [project:read]
+    tenant: true
+    description: List projects in organization
+    pagination: true
+    responses:
+      200: Paginated project list
+  create_project:
+    path: /projects
+    method: POST
+    auth: token
+    scopes: [project:write]
+    tenant: true
+    description: Create a new project
+    request:
+      body:
+        name: string
+        description: text
+    responses:
+      201: Project created
+  get_project:
+    path: /projects/{id}
+    method: GET
+    auth: token
+    scopes: [project:read]
+    tenant: true
+    description: Get project details
+    responses:
+      200: Project details
+  update_project:
+    path: /projects/{id}
+    method: PATCH
+    auth: token
+    scopes: [project:write]
+    tenant: true
+    description: Update project
+    responses:
+      200: Project updated
+  delete_project:
+    path: /projects/{id}
+    method: DELETE
+    auth: token
+    scopes: [project:delete]
+    tenant: true
+    description: Delete project
+    responses:
+      204: Project deleted

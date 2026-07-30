@@ -1,0 +1,38 @@
+approval_flows:
+  single_approval:
+    description: Single person approval
+    steps:
+      - submit: Request submitted
+      - notify_approver: Notify assigned approver
+      - approve_or_reject: Approver reviews and decides
+      - execute: Execute if approved, notify if rejected
+    config:
+      timeout_hours: 72
+      escalation: true
+      auto_approve: false
+  multi_level:
+    description: Multi-level hierarchical approval
+    steps:
+      - submit: Request submitted
+      - manager_approval: Direct manager approval
+      - director_approval: Director approval if amount > threshold
+      - exec_approval: Executive approval if amount > higher_threshold
+    config:
+      thresholds:
+        - role: manager
+          max_amount: 10000
+        - role: director
+          max_amount: 50000
+        - role: executive
+          max_amount: 1000000
+  parallel_approval:
+    description: Multiple parallel approvals required
+    steps:
+      - submit: Request submitted
+      - notify_all: Notify all required approvers simultaneously
+      - collect_responses: Wait for all responses
+      - tally: Check if majority approved
+      - execute: Execute or reject based on tally
+    config:
+      required_approvals: 2
+      timeout_hours: 48

@@ -1,0 +1,57 @@
+name: User
+table: users
+description: Platform user account
+tenant: false  # User is not tenant-scoped; Organization is
+timestamps: true
+soft_delete: true
+uuid: true
+
+fields:
+  email:
+    type: string
+    unique: true
+    nullable: false
+    indexed: true
+  password_hash:
+    type: string
+    sensitive: true
+  full_name:
+    type: string
+  avatar_url:
+    type: string
+    nullable: true
+  status:
+    enum:
+      - active
+      - inactive
+      - suspended
+      - pending
+  is_superuser:
+    type: boolean
+  is_verified:
+    type: boolean
+  last_login_at:
+    type: datetime
+    nullable: true
+
+relationships:
+  memberships:
+    type: one_to_many
+    target: OrganizationMember
+    back_populates: user
+  teams:
+    type: one_to_many
+    target: TeamMember
+    back_populates: user
+  notifications:
+    type: one_to_many
+    target: Notification
+  api_keys:
+    type: one_to_many
+    target: APIKey
+  oauth_tokens:
+    type: one_to_many
+    target: OAuthToken
+  audit_logs:
+    type: one_to_many
+    target: AuditLog

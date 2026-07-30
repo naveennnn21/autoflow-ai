@@ -1,0 +1,32 @@
+name: Subscription
+table: subscriptions
+description: Organization subscription to a plan
+tenant: true
+timestamps: true
+soft_delete: true
+uuid: true
+fields:
+  plan_id:
+    type: string
+    nullable: false
+  status:
+    type: string
+  current_period_start:
+    type: datetime
+    nullable: false
+  current_period_end:
+    type: datetime
+    nullable: false
+  trial_end:
+    type: datetime
+    nullable: true
+  cancelled_at:
+    type: datetime
+    nullable: true
+relationships:
+  organization:
+    type: many_to_one
+    target: Organization
+  invoices:
+    type: one_to_many
+    target: Invoice

@@ -1,0 +1,63 @@
+name: Execution
+table: executions
+description: Workflow execution run
+tenant: true
+timestamps: true
+soft_delete: false
+uuid: true
+
+fields:
+  workflow_id:
+    type: uuid
+    nullable: false
+    foreign_key: Workflow
+  triggered_by:
+    type: uuid
+    nullable: true
+    foreign_key: User
+  status:
+    enum:
+      - pending
+      - running
+      - paused
+      - completed
+      - failed
+      - cancelled
+      - timeout
+      - retrying
+  trigger_type:
+    type: string
+  input_data:
+    type: json
+  output_data:
+    type: json
+  error_message:
+    type: text
+    nullable: true
+  started_at:
+    type: datetime
+    nullable: true
+  completed_at:
+    type: datetime
+    nullable: true
+  duration_ms:
+    type: integer
+    nullable: true
+  retry_attempt:
+    type: integer
+  cost:
+    type: float
+
+relationships:
+  workflow:
+    type: many_to_one
+    target: Workflow
+  logs:
+    type: one_to_many
+    target: ExecutionLog
+
+indexes:
+  ix_executions_workflow_status:
+    columns:
+      - workflow_id
+      - status

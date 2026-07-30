@@ -1,0 +1,10 @@
+# Repository configuration for Execution
+entity: Execution
+
+searchable_fields: []
+filterable_fields: ["status", "trigger_type", "retry_attempt"]
+sortable_fields: ["started_at", "completed_at", "duration_ms", "cost", "created_at"]
+unique_fields: []
+cache_policy: low
+cache_ttl: 120
+default_ordering: "-started_at"

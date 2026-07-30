@@ -1,0 +1,10 @@
+# Repository configuration for Project
+entity: Project
+
+searchable_fields: ["name", "description"]
+filterable_fields: ["status"]
+sortable_fields: ["name", "created_at", "status"]
+unique_fields: []
+cache_policy: medium
+cache_ttl: 300
+default_ordering: "-created_at"

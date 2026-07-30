@@ -1,0 +1,25 @@
+optimizer:
+  models:
+    performance_analyzer:
+      model: gpt-4
+      description: Analyzes execution performance data
+      temperature: 0.1
+    cost_optimizer:
+      model: claude-3-haiku
+      description: Suggests cost reduction improvements
+      temperature: 0.2
+    reliability_advisor:
+      model: claude-3-sonnet
+      description: Recommends reliability improvements
+      temperature: 0.3
+  optimization_goals:
+    - latency: Reduce execution time
+    - cost: Reduce API/token costs
+    - reliability: Improve success rate
+    - parallelism: Increase concurrent execution
+  strategies:
+    - parallel_execution: Execute independent steps in parallel
+    - caching: Cache frequently used results
+    - batching: Batch similar API calls
+    - pruning: Remove unnecessary steps
+    - merging: Merge sequential compatible steps

@@ -1,0 +1,19 @@
+name: Notification
+description: Multi-channel notification service
+dependencies:
+  - User
+permissions:
+  - owner
+  - admin
+  - developer
+  - member
+cache_policy: high
+methods:
+  send:
+    description: Send notification
+  list:
+    description: List notifications
+  mark_read:
+    description: Mark notification as read
+  preferences:
+    description: Notification preferences

@@ -1,0 +1,4 @@
+# Repository configuration for TeamMember
+entity: TeamMember
+
+excluded_from_repo: true

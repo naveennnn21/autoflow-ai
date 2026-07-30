@@ -1,0 +1,33 @@
+retry_policies:
+  linear:
+    description: Linear retry with fixed interval
+    config:
+      max_attempts: 3
+      delay_seconds: 60
+      backoff_multiplier: 1
+      timeout_seconds: 300
+  exponential_backoff:
+    description: Exponential backoff with jitter
+    config:
+      max_attempts: 5
+      initial_delay_seconds: 10
+      backoff_multiplier: 2
+      max_delay_seconds: 600
+      jitter: true
+  immediate:
+    description: Immediate retry without delay
+    config:
+      max_attempts: 3
+      delay_seconds: 0
+  custom:
+    description: Customizable retry configuration
+    config:
+      max_attempts: integer
+      delay_seconds: integer
+      backoff_multiplier: float
+      max_delay_seconds: integer
+      retryable_errors:
+        - timeout
+        - rate_limit
+        - server_error
+        - network_error

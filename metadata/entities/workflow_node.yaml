@@ -1,0 +1,51 @@
+name: WorkflowNode
+table: workflow_nodes
+description: A single step/node in a workflow
+tenant: false
+timestamps: true
+soft_delete: false
+uuid: true
+fields:
+  type:
+    enum:
+      - trigger
+      - action
+      - condition
+      - loop
+      - delay
+      - code
+      - llm_call
+      - api_call
+      - transform
+      - merge
+      - split
+      - webhook
+    nullable: false
+  label:
+    type: string
+    nullable: false
+  position:
+    type: integer
+  config:
+    type: json
+  input_schema:
+    type: json
+  output_schema:
+    type: json
+  timeout_seconds:
+    type: integer
+  retry_count:
+    type: integer
+  retry_delay:
+    type: integer
+  is_active:
+    type: boolean
+relationships:
+  workflow:
+    type: many_to_one
+    target: Workflow
+indexes:
+  ix_workflow_nodes_position:
+    columns:
+      - workflow_id
+      - position

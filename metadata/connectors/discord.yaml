@@ -1,0 +1,22 @@
+name: Discord
+version: 1.0.0
+description: Discord webhook and bot integration
+auth:
+  type: webhook
+  provider: discord
+triggers:
+  new_message:
+    description: Triggered when new message posted
+    webhook: true
+  slash_command:
+    description: Triggered by slash command
+actions:
+  send_message:
+    description: Send message to channel
+    inputs:
+      - channel: string
+      - message: text
+  send_embed:
+    description: Send rich embed message
+  create_thread:
+    description: Create forum thread

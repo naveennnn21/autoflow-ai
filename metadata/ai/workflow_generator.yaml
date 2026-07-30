@@ -1,0 +1,21 @@
+workflow_generator:
+  process:
+    steps:
+      - analyze_prompt: Parse user description for intent and constraints
+      - identify_triggers: Determine workflow triggers
+      - design_steps: Design optimal execution steps
+      - select_connectors: Choose appropriate connectors
+      - configure_nodes: Configure each node with parameters
+      - validate_flow: Validate workflow for correctness
+      - generate_preview: Generate human-readable preview
+  templates:
+    - data_pipeline: Extract, transform, load workflow
+    - approval_flow: Multi-step approval process
+    - notification_chain: Cascading notification system
+    - ai_chatbot: Conversational AI workflow
+    - webhook_relay: Event-driven webhook processing
+  validation:
+    - cycle_detection: Detect and break infinite loops
+    - type_checking: Verify data types across nodes
+    - connector_compatibility: Ensure connector actions match
+    - permission_check: Verify all required permissions

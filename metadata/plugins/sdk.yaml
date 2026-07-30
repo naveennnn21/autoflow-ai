@@ -1,0 +1,35 @@
+sdk:
+  version: 1.0.0
+  lifecycle:
+    install:
+      description: Plugin installation
+      hooks:
+        - pre_install
+        - post_install
+    enable:
+      description: Plugin activation
+      hooks:
+        - pre_enable
+        - post_enable
+    disable:
+      description: Plugin deactivation
+      hooks:
+        - pre_disable
+        - post_disable
+    uninstall:
+      description: Plugin removal
+      hooks:
+        - pre_uninstall
+        - post_uninstall
+  capabilities:
+    - workflow_nodes
+    - connectors
+    - ui_components
+    - event_handlers
+    - api_endpoints
+  permissions:
+    - read_workflows
+    - write_workflows
+    - read_executions
+    - write_executions
+    - manage_connectors

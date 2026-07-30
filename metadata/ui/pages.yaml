@@ -1,0 +1,25 @@
+pages:
+  dashboard:
+    path: /
+    components:
+      - stats_cards
+      - recent_workflows
+      - execution_chart
+      - alerts_list
+    roles: [owner, admin, developer, viewer]
+  workflow_builder:
+    path: /workflows/builder
+    components:
+      - canvas
+      - node_palette
+      - config_panel
+      - test_runner
+    roles: [owner, admin, developer]
+  monitoring:
+    path: /monitoring
+    components:
+      - metrics_grid
+      - execution_timeline
+      - logs_viewer
+      - alerts_panel
+    roles: [owner, admin, developer, viewer]

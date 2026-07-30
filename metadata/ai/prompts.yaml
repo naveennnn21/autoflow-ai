@@ -1,0 +1,13 @@
+prompts:
+  analyze_workflow:
+    template: "Analyze this workflow description and extract steps, triggers, conditions, and actions: {input}"
+    max_tokens: 2000
+    temperature: 0.2
+  generate_workflow:
+    template: "Generate a complete workflow configuration based on the plan: {plan}"
+    max_tokens: 4000
+    temperature: 0.1
+  optimize_workflow:
+    template: "Optimize this workflow configuration for performance and reliability: {config}"
+    max_tokens: 2000
+    temperature: 0.3

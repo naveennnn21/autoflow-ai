@@ -1,0 +1,49 @@
+events:
+  workflow:
+    workflow.started:
+      description: Workflow execution started
+      payload:
+        - workflow_id
+        - execution_id
+        - triggered_by
+        - timestamp
+    workflow.completed:
+      description: Workflow execution completed
+      payload:
+        - workflow_id
+        - execution_id
+        - duration_ms
+        - cost
+        - timestamp
+    workflow.failed:
+      description: Workflow execution failed
+      payload:
+        - workflow_id
+        - execution_id
+        - error
+        - retry_attempt
+        - timestamp
+    execution.retried:
+      description: Failed execution being retried
+      payload:
+        - workflow_id
+        - execution_id
+        - attempt
+        - max_attempts
+  billing:
+    invoice.paid:
+      description: Invoice payment received
+    subscription.cancelled:
+      description: Subscription cancelled
+  connectors:
+    connector.connected:
+      description: New connector integration activated
+    connector.disconnected:
+      description: Connector integration deactivated
+    connector.error:
+      description: Connector integration error
+  ai:
+    ai.workflow_generated:
+      description: AI generated a new workflow
+    ai.workflow_optimized:
+      description: AI optimized an existing workflow

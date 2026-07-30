@@ -1,0 +1,35 @@
+states:
+  pending:
+    description: Execution created but not started
+    transitions:
+      - running
+      - cancelled
+  running:
+    description: Execution is actively processing
+    transitions:
+      - paused
+      - completed
+      - failed
+      - cancelled
+  paused:
+    description: Execution paused by user or system
+    transitions:
+      - running
+      - cancelled
+  completed:
+    description: Execution finished successfully
+    transitions: []
+  failed:
+    description: Execution encountered error
+    transitions:
+      - pending
+      - running
+      - cancelled
+  cancelled:
+    description: Execution cancelled by user
+    transitions: []
+  retrying:
+    description: Execution is being retried
+    transitions:
+      - running
+      - failed

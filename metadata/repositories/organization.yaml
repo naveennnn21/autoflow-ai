@@ -1,0 +1,10 @@
+# Repository configuration for Organization
+entity: Organization
+
+searchable_fields: ["name", "slug", "description"]
+filterable_fields: ["tier", "is_active"]
+sortable_fields: ["name", "created_at", "tier"]
+unique_fields: ["slug"]
+cache_policy: high
+cache_ttl: 600
+default_ordering: "-created_at"

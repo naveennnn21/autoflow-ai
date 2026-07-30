@@ -1,0 +1,41 @@
+name: MarketplaceItem
+table: marketplace_items
+description: Item available in the workflow marketplace
+tenant: false
+timestamps: true
+soft_delete: true
+uuid: true
+fields:
+  name:
+    type: string
+    nullable: false
+  slug:
+    type: string
+    unique: true
+    nullable: false
+  description:
+    type: text
+    nullable: true
+  category:
+    type: string
+    nullable: false
+  type:
+    type: string
+  config:
+    type: json
+  version:
+    type: string
+  is_verified:
+    type: boolean
+  is_paid:
+    type: boolean
+  price:
+    type: float
+  rating:
+    type: float
+  download_count:
+    type: integer
+relationships:
+  author:
+    type: many_to_one
+    target: User

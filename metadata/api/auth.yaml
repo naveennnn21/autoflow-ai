@@ -1,0 +1,66 @@
+endpoints:
+  register:
+    path: /auth/register
+    method: POST
+    auth: none
+    rate_limit: 10/minute
+    description: Register a new user account
+    request:
+      body:
+        email: string
+        password: string
+        full_name: string
+    responses:
+      201: User created
+      409: Email already exists
+  login:
+    path: /auth/login
+    method: POST
+    auth: none
+    rate_limit: 20/minute
+    description: Authenticate user and return JWT tokens
+    request:
+      body:
+        email: string
+        password: string
+    responses:
+      200: Access and refresh tokens
+      401: Invalid credentials
+  oauth:
+    path: /auth/oauth/{provider}
+    method: GET
+    auth: none
+    description: Initiate OAuth flow with provider
+    parameters:
+      provider: string
+  refresh:
+    path: /auth/refresh
+    method: POST
+    auth: token
+    description: Refresh access token
+    request:
+      body:
+        refresh_token: string
+    responses:
+      200: New access token
+  logout:
+    path: /auth/logout
+    method: POST
+    auth: token
+    description: Invalidate current session
+  me:
+    path: /auth/me
+    method: GET
+    auth: token
+    description: Get current authenticated user
+  password_reset:
+    path: /auth/password-reset
+    method: POST
+    auth: none
+    rate_limit: 3/hour
+    description: Request password reset email
+  password_change:
+    path: /auth/password-change
+    method: POST
+    auth: token
+    description: Change current password

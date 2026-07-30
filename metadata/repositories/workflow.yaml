@@ -1,0 +1,10 @@
+# Repository configuration for Workflow
+entity: Workflow
+
+searchable_fields: ["name", "description"]
+filterable_fields: ["status", "version"]
+sortable_fields: ["name", "created_at", "updated_at", "status", "version"]
+unique_fields: []
+cache_policy: medium
+cache_ttl: 300
+default_ordering: "-created_at"

@@ -1,0 +1,36 @@
+name: Stripe
+version: 1.0.0
+description: Stripe payment processing integration
+auth:
+  type: api_key
+  provider: stripe
+  scopes:
+    - payment_intent
+    - subscription
+    - invoice
+triggers:
+  payment_succeeded:
+    description: Payment completed successfully
+    webhook: true
+  payment_failed:
+    description: Payment failed
+    webhook: true
+  subscription_updated:
+    description: Subscription status changed
+    webhook: true
+  invoice_paid:
+    description: Invoice paid
+    webhook: true
+actions:
+  create_payment:
+    description: Create payment intent
+    inputs:
+      - amount: integer
+      - currency: string
+      - description: string
+  create_subscription:
+    description: Create new subscription
+  create_invoice:
+    description: Generate invoice
+  refund_payment:
+    description: Process refund

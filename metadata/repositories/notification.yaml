@@ -1,0 +1,10 @@
+# Repository configuration for Notification
+entity: Notification
+
+searchable_fields: ["title", "message"]
+filterable_fields: ["type", "channel", "is_read"]
+sortable_fields: ["created_at", "type"]
+unique_fields: []
+cache_policy: low
+cache_ttl: 60
+default_ordering: "-created_at"

@@ -1,0 +1,4 @@
+# Repository configuration for ExecutionLog
+entity: ExecutionLog
+
+excluded_from_repo: true

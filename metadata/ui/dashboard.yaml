@@ -1,0 +1,42 @@
+sections:
+  overview:
+    widgets:
+      - type: stat_card
+        title: Active Workflows
+        metric: total_active_workflows
+        icon: workflow
+        color: blue
+      - type: stat_card
+        title: Recent Executions
+        metric: last_24h_executions
+        icon: play
+        color: green
+      - type: stat_card
+        title: Error Rate
+        metric: error_rate_percentage
+        icon: alert
+        color: red
+      - type: stat_card
+        title: Total Users
+        metric: total_users
+        icon: users
+        color: purple
+  performance:
+    widgets:
+      - type: line_chart
+        title: Execution Duration (24h)
+        metric: execution_duration_series
+      - type: bar_chart
+        title: Workflow Runs by Type
+        metric: workflow_type_distribution
+      - type: pie_chart
+        title: Error Breakdown
+        metric: error_type_distribution
+  activity:
+    widgets:
+      - type: timeline
+        title: Recent Activity
+        metric: recent_activity_feed
+      - type: table
+        title: Recent Executions
+        metric: recent_executions

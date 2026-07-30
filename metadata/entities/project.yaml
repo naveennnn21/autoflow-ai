@@ -1,0 +1,25 @@
+name: Project
+table: projects
+description: Project grouping for workflows
+tenant: true
+timestamps: true
+soft_delete: true
+uuid: true
+fields:
+  name:
+    type: string
+    nullable: false
+  description:
+    type: text
+    nullable: true
+  status:
+    type: string
+  metadata:
+    type: json
+relationships:
+  organization:
+    type: many_to_one
+    target: Organization
+  workflows:
+    type: one_to_many
+    target: Workflow

@@ -1,0 +1,18 @@
+name: Monitoring
+description: System and workflow monitoring
+dependencies:
+  - Workflow
+  - Execution
+permissions:
+  - owner
+  - admin
+cache_policy: low
+methods:
+  metrics:
+    description: System metrics
+  alerts:
+    description: Alert management
+  dashboard:
+    description: Monitoring dashboard
+  health:
+    description: Health checks

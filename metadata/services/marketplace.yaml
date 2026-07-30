@@ -1,0 +1,26 @@
+name: Marketplace
+description: Workflow template marketplace service
+dependencies:
+  - Template
+  - MarketplaceItem
+permissions:
+  - public
+  - admin
+cache_policy: high
+methods:
+  list:
+    description: List marketplace items with search/filter
+  get:
+    description: Get marketplace item details
+  install:
+    description: Install template from marketplace
+  publish:
+    description: Publish item to marketplace
+  unpublish:
+    description: Remove item from marketplace
+  rate:
+    description: Rate marketplace item
+  review:
+    description: Submit review
+  search:
+    description: Search marketplace items

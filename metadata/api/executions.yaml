@@ -1,0 +1,24 @@
+endpoints:
+  list_executions:
+    path: /executions
+    method: GET
+    auth: token
+    scopes: [execution:read]
+    tenant: true
+    description: List executions with filtering
+    pagination: true
+    query:
+      workflow_id: uuid
+      status: string
+      from_date: datetime
+      to_date: datetime
+    responses:
+      200: Paginated execution list
+  get_execution:
+    path: /executions/{id}
+    method: GET
+    auth: token
+    scopes: [execution:read]
+    tenant: true
+    description: Get execution details with logs
+    responses:

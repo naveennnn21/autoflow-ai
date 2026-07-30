@@ -1,0 +1,12 @@
+memory:
+  session:
+    type: redis
+    ttl: 3600
+  context:
+    type: vector
+    provider: pinecone
+    dimensions: 1536
+  cache:
+    type: redis
+    ttl: 86400
+    max_size: 1000

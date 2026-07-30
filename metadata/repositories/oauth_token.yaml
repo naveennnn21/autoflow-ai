@@ -1,0 +1,10 @@
+# Repository configuration for OAuthToken
+entity: OAuthToken
+
+searchable_fields: ["provider", "scope"]
+filterable_fields: ["provider", "token_type"]
+sortable_fields: ["created_at", "expires_at"]
+unique_fields: []
+cache_policy: low
+cache_ttl: 120
+default_ordering: "-created_at"

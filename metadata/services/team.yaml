@@ -1,0 +1,25 @@
+name: Team
+description: Team grouping and management service
+dependencies:
+  - Organization
+  - Team
+  - User
+permissions:
+  - owner
+  - admin
+cache_policy: medium
+methods:
+  create:
+    description: Create new team
+  update:
+    description: Update team settings
+  delete:
+    description: Delete team
+  add_member:
+    description: Add user to team
+  remove_member:
+    description: Remove user from team
+  list_members:
+    description: List team members
+  list_teams:
+    description: List teams in organization

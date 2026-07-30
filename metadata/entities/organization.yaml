@@ -1,0 +1,57 @@
+name: Organization
+table: organizations
+description: Multi-tenant organization
+tenant: false  # Organization is the tenant root
+timestamps: true
+soft_delete: true
+uuid: true
+
+fields:
+  name:
+    type: string
+    nullable: false
+  slug:
+    type: string
+    unique: true
+    nullable: false
+    indexed: true
+  logo_url:
+    type: string
+    nullable: true
+  description:
+    type: text
+    nullable: true
+  is_active:
+    type: boolean
+  tier:
+    type: string
+  settings:
+    type: json
+
+relationships:
+  members:
+    type: one_to_many
+    target: OrganizationMember
+    back_populates: organization
+  teams:
+    type: one_to_many
+    target: Team
+    back_populates: organization
+  projects:
+    type: one_to_many
+    target: Project
+  workflows:
+    type: one_to_many
+    target: Workflow
+  templates:
+    type: one_to_many
+    target: Template
+  api_keys:
+    type: one_to_many
+    target: APIKey
+  subscriptions:
+    type: one_to_many
+    target: Subscription
+  invoices:
+    type: one_to_many
+    target: Invoice

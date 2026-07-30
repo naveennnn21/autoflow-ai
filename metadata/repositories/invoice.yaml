@@ -1,0 +1,10 @@
+# Repository configuration for Invoice
+entity: Invoice
+
+searchable_fields: ["description", "currency", "status"]
+filterable_fields: ["status", "currency"]
+sortable_fields: ["amount", "created_at", "due_date", "paid_at"]
+unique_fields: []
+cache_policy: low
+cache_ttl: 120
+default_ordering: "-created_at"

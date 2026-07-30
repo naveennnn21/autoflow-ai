@@ -1,0 +1,39 @@
+endpoints:
+  get_metrics:
+    path: /monitoring/metrics
+    method: GET
+    auth: token
+    scopes: [monitoring:read]
+    tenant: true
+    description: Get system and workflow metrics
+    responses:
+      200: Metrics data
+  get_alerts:
+    path: /monitoring/alerts
+    method: GET
+    auth: token
+    scopes: [monitoring:read]
+    tenant: true
+    pagination: true
+    description: List active alerts
+  resolve_alert:
+    path: /monitoring/alerts/{id}/resolve
+    method: POST
+    auth: token
+    scopes: [monitoring:write]
+    tenant: true
+    description: Resolve an alert
+  get_dashboard:
+    path: /monitoring/dashboard
+    method: GET
+    auth: token
+    scopes: [monitoring:read]
+    tenant: true
+    description: Get monitoring dashboard data
+  get_health:
+    path: /monitoring/health
+    method: GET
+    auth: none
+    description: System health check endpoint
+    responses:
+      200: Health status

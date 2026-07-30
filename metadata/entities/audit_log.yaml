@@ -1,0 +1,27 @@
+name: AuditLog
+table: audit_logs
+description: Audit trail for security and compliance
+tenant: true
+timestamps: true
+soft_delete: false
+uuid: true
+fields:
+  action:
+    type: string
+    nullable: false
+  resource_type:
+    type: string
+    nullable: false
+  resource_id:
+    type: string
+    nullable: true
+  detail:
+    type: json
+  ip_address:
+    type: string
+  user_agent:
+    type: string
+relationships:
+  user:
+    type: many_to_one
+    target: User

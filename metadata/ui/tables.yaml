@@ -1,0 +1,30 @@
+tables:
+  workflows:
+    columns:
+      - name
+      - status
+      - version
+      - last_run_at
+      - created_at
+    actions:
+      - view
+      - edit
+      - deploy
+      - delete
+    default_sort: created_at
+    default_sort_order: desc
+    page_size: 25
+  executions:
+    columns:
+      - workflow_name
+      - status
+      - started_at
+      - duration_ms
+      - cost
+    actions:
+      - view
+      - retry
+      - cancel
+    default_sort: started_at
+    default_sort_order: desc
+    page_size: 25

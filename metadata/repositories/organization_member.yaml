@@ -1,0 +1,4 @@
+# Repository configuration for OrganizationMember
+entity: OrganizationMember
+
+excluded_from_repo: true

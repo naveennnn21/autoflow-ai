@@ -1,0 +1,23 @@
+name: Workflow
+description: Workflow CRUD and lifecycle management
+dependencies:
+  - Organization
+  - Project
+permissions:
+  - owner
+  - admin
+  - developer
+cache_policy: medium
+methods:
+  create:
+    description: Create new workflow
+  update:
+    description: Update workflow configuration
+  deploy:
+    description: Deploy workflow to production
+  archive:
+    description: Archive workflow
+  clone:
+    description: Clone existing workflow
+  validate:
+    description: Validate workflow configuration

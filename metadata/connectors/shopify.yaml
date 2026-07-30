@@ -1,0 +1,31 @@
+name: Shopify
+version: 1.0.0
+description: Shopify e-commerce integration
+auth:
+  type: oauth2
+  provider: shopify
+triggers:
+  order_created:
+    description: New order placed
+    webhook: true
+  order_fulfilled:
+    description: Order fulfilled
+    webhook: true
+  product_updated:
+    description: Product details changed
+    webhook: true
+  customer_created:
+    description: New customer registered
+    webhook: true
+actions:
+  get_orders:
+    description: Fetch latest orders
+    inputs:
+      - status: string
+      - limit: integer
+  create_product:
+    description: Create new product listing
+  update_inventory:
+    description: Update stock levels
+  get_customers:
+    description: List customers with filters

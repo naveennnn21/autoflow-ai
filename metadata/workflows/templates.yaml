@@ -1,0 +1,27 @@
+templates:
+  data_pipeline:
+    description: Extract, transform, and load data
+    category: data
+    steps:
+      - trigger: schedule
+      - action: api_call
+      - action: transform
+      - action: database_write
+  approval_flow:
+    description: Multi-step approval process
+    category: process
+    steps:
+      - trigger: form_submission
+      - action: notification
+      - action: wait_for_approval
+      - condition: approved
+      - action: execute
+  notification_chain:
+    description: Multi-channel notification dispatch
+    category: communication
+    steps:
+      - trigger: event
+      - condition: check_preferences
+      - action: send_email
+      - action: send_slack
+      - action: send_push

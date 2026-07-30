@@ -1,0 +1,10 @@
+# Repository configuration for AuditLog
+entity: AuditLog
+
+searchable_fields: ["action", "resource_type", "resource_id", "ip_address"]
+filterable_fields: ["action", "resource_type"]
+sortable_fields: ["created_at", "action"]
+unique_fields: []
+cache_policy: none
+cache_ttl: 0
+default_ordering: "-created_at"

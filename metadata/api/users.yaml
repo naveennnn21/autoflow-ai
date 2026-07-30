@@ -1,0 +1,56 @@
+endpoints:
+  list_users:
+    path: /users
+    method: GET
+    auth: token
+    scopes: [users:read]
+    description: List users with pagination and filtering
+    pagination: true
+    query:
+      search: string
+      status: string
+      role: string
+    responses:
+      200: Paginated user list
+  create_user:
+    path: /users
+    method: POST
+    auth: token
+    scopes: [users:write]
+    description: Create a new user
+    request:
+      body:
+        email: string
+        password: string
+        full_name: string
+        role: string
+    responses:
+      201: User created
+  get_user:
+    path: /users/{id}
+    method: GET
+    auth: token
+    scopes: [users:read]
+    description: Get user by ID
+    responses:
+      200: User details
+  update_user:
+    path: /users/{id}
+    method: PATCH
+    auth: token
+    scopes: [users:write]
+    description: Update user profile
+    request:
+      body:
+        full_name: string
+        avatar_url: string
+    responses:
+      200: User updated
+  delete_user:
+    path: /users/{id}
+    method: DELETE
+    auth: token
+    scopes: [users:delete]
+    description: Soft delete user account
+    responses:
+      204: User deleted

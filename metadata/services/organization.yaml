@@ -1,0 +1,26 @@
+name: Organization
+description: Organization management service
+dependencies:
+  - Organization
+  - User
+permissions:
+  - owner
+  - admin
+cache_policy: medium
+methods:
+  create:
+    description: Create new organization
+  update:
+    description: Update organization settings
+  deactivate:
+    description: Deactivate organization
+  add_member:
+    description: Add user to organization with role
+  remove_member:
+    description: Remove user from organization
+  update_member_role:
+    description: Change member role
+  list_members:
+    description: List all organization members
+  get_usage:
+    description: Get organization usage stats

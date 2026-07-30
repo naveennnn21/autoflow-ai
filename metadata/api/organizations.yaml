@@ -1,0 +1,74 @@
+endpoints:
+  list_organizations:
+    path: /organizations
+    method: GET
+    auth: token
+    scopes: [org:read]
+    description: List organizations for current user
+    pagination: true
+    responses:
+      200: Paginated organization list
+  create_organization:
+    path: /organizations
+    method: POST
+    auth: token
+    scopes: [org:write]
+    description: Create a new organization
+    request:
+      body:
+        name: string
+        slug: string
+        description: text
+    responses:
+      201: Organization created
+  get_organization:
+    path: /organizations/{id}
+    method: GET
+    auth: token
+    scopes: [org:read]
+    tenant: true
+    description: Get organization details
+    responses:
+      200: Organization details
+  update_organization:
+    path: /organizations/{id}
+    method: PATCH
+    auth: token
+    scopes: [org:write]
+    tenant: true
+    description: Update organization settings
+    responses:
+      200: Organization updated
+  delete_organization:
+    path: /organizations/{id}
+    method: DELETE
+    auth: token
+    scopes: [org:delete]
+    tenant: true
+    description: Soft delete organization
+    responses:
+      204: Organization deleted
+  list_members:
+    path: /organizations/{id}/members
+    method: GET
+    auth: token
+    scopes: [org:read]
+    tenant: true
+    description: List organization members
+    pagination: true
+    responses:
+      200: Paginated member list
+  add_member:
+    path: /organizations/{id}/members
+    method: POST
+    auth: token
+    scopes: [org:write]
+    tenant: true
+    description: Add member to organization
+  remove_member:
+    path: /organizations/{id}/members/{user_id}
+    method: DELETE
+    auth: token
+    scopes: [org:write]
+    tenant: true
+    description: Remove member from organization

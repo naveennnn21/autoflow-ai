@@ -1,0 +1,24 @@
+name: Analytics
+description: Analytics and reporting service
+dependencies:
+  - Workflow
+  - Execution
+permissions:
+  - owner
+  - admin
+cache_policy: low
+methods:
+  workflow_stats:
+    description: Workflow execution statistics
+  user_stats:
+    description: User activity statistics
+  execution_times:
+    description: Execution duration analytics
+  error_breakdown:
+    description: Error type distribution
+  usage_trends:
+    description: Usage trends over time
+  cost_analysis:
+    description: Cost breakdown by workflow
+  export_report:
+    description: Export analytics report

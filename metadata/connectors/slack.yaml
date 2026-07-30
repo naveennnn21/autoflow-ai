@@ -1,0 +1,25 @@
+name: Slack
+version: 1.0.0
+description: Slack workspace integration
+auth:
+  type: oauth2
+  provider: slack
+triggers:
+  new_message:
+    description: New message in channel
+  new_channel:
+    description: New channel created
+actions:
+  send_message:
+    description: Send message to channel
+    inputs:
+      - channel: string
+      - text: text
+  create_channel:
+    description: Create new channel
+  list_channels:
+    description: List workspace channels
+  upload_file:
+    description: Upload file to channel
+rate_limits:
+  messages: 1/s

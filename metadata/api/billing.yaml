@@ -1,0 +1,47 @@
+endpoints:
+  get_subscription:
+    path: /billing/subscription
+    method: GET
+    auth: token
+    scopes: [billing:read]
+    tenant: true
+    description: Get current subscription details
+  update_subscription:
+    path: /billing/subscription
+    method: PATCH
+    auth: token
+    scopes: [billing:write]
+    tenant: true
+    description: Change subscription plan
+    request:
+      body:
+        plan_id: string
+  cancel_subscription:
+    path: /billing/subscription/cancel
+    method: POST
+    auth: token
+    scopes: [billing:write]
+    tenant: true
+    description: Cancel subscription
+  list_invoices:
+    path: /billing/invoices
+    method: GET
+    auth: token
+    scopes: [billing:read]
+    tenant: true
+    pagination: true
+    description: List invoices
+  get_invoice:
+    path: /billing/invoices/{id}
+    method: GET
+    auth: token
+    scopes: [billing:read]
+    tenant: true
+    description: Get invoice details
+  get_usage:
+    path: /billing/usage
+    method: GET
+    auth: token
+    scopes: [billing:read]
+    tenant: true
+    description: Get current usage metrics

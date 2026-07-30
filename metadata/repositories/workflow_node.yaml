@@ -1,0 +1,10 @@
+# Repository configuration for WorkflowNode
+entity: WorkflowNode
+
+searchable_fields: ["label"]
+filterable_fields: ["type", "is_active"]
+sortable_fields: ["position", "label"]
+unique_fields: []
+cache_policy: low
+cache_ttl: 120
+default_ordering: "position"

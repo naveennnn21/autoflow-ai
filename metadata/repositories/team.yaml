@@ -1,0 +1,10 @@
+# Repository configuration for Team
+entity: Team
+
+searchable_fields: ["name", "description"]
+filterable_fields: []
+sortable_fields: ["name", "created_at"]
+unique_fields: []
+cache_policy: low
+cache_ttl: 120
+default_ordering: "name"

@@ -1,0 +1,21 @@
+agents:
+  workflow_planner:
+    model: gpt-4
+    description: Plans workflow structure from natural language
+    temperature: 0.2
+  code_generator:
+    model: gpt-4
+    description: Generates workflow code from plan
+    temperature: 0.1
+  connector_selector:
+    model: claude-3-sonnet
+    description: Selects appropriate connectors for workflow
+    temperature: 0.3
+  optimizer:
+    model: gpt-4-turbo
+    description: Optimizes workflow performance
+    temperature: 0.1
+  debugger:
+    model: gpt-4
+    description: Debugs workflow execution failures
+    temperature: 0.4

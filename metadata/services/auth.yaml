@@ -1,0 +1,24 @@
+name: Auth
+description: Authentication and authorization service
+dependencies:
+  - User
+  - Organization
+permissions:
+  - public
+cache_policy: session
+methods:
+  register:
+    description: Register new user
+    validation:
+      - email: required|email|unique
+      - password: required|min:8
+  login:
+    description: User login with email/password
+    validation:
+      - email: required|email
+  oauth:
+    description: OAuth provider login
+  refresh:
+    description: Refresh access token
+  logout:
+    description: Invalidate session

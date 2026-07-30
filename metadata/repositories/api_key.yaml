@@ -1,0 +1,10 @@
+# Repository configuration for APIKey
+entity: APIKey
+
+searchable_fields: ["name", "key_prefix"]
+filterable_fields: ["is_active", "scopes"]
+sortable_fields: ["name", "created_at", "expires_at"]
+unique_fields: ["key_hash"]
+cache_policy: low
+cache_ttl: 120
+default_ordering: "-created_at"

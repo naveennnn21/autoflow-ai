@@ -1,0 +1,25 @@
+permissions:
+  workflow:
+    create: [owner, admin, developer]
+    read: [owner, admin, developer, viewer]
+    update: [owner, admin, developer]
+    delete: [owner, admin]
+    deploy: [owner, admin]
+    execute: [owner, admin, developer]
+  organization:
+    manage: [owner]
+    update: [owner, admin]
+    delete: [owner]
+    members: [owner, admin]
+    billing: [owner, admin]
+  user:
+    read: [owner, admin, developer, viewer]
+    update: [owner, admin]
+    manage: [owner]
+  execution:
+    run: [owner, admin, developer]
+    cancel: [owner, admin]
+    view: [owner, admin, developer, viewer]
+  billing:
+    view: [owner, admin]
+    manage: [owner]

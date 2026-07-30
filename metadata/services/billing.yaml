@@ -1,0 +1,23 @@
+name: Billing
+description: Billing and subscription management
+dependencies:
+  - Organization
+  - Invoice
+  - Subscription
+permissions:
+  - owner
+  - admin
+cache_policy: high
+methods:
+  subscribe:
+    description: Subscribe to plan
+  cancel:
+    description: Cancel subscription
+  invoice:
+    description: Generate invoice
+  payment:
+    description: Process payment
+  refund:
+    description: Process refund
+  report:
+    description: Billing reports

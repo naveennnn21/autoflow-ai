@@ -1,0 +1,29 @@
+name: Notification
+table: notifications
+description: User notification
+tenant: false
+timestamps: true
+soft_delete: false
+uuid: true
+fields:
+  title:
+    type: string
+    nullable: false
+  message:
+    type: text
+    nullable: true
+  type:
+    type: string
+  channel:
+    type: string
+  is_read:
+    type: boolean
+  read_at:
+    type: datetime
+    nullable: true
+  payload:
+    type: json
+relationships:
+  user:
+    type: many_to_one
+    target: User

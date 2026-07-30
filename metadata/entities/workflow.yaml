@@ -1,0 +1,46 @@
+name: Workflow
+table: workflows
+description: Automated workflow definition
+tenant: true
+timestamps: true
+soft_delete: true
+uuid: true
+
+fields:
+  project_id:
+    type: uuid
+    nullable: true
+    foreign_key: Project
+  name:
+    type: string
+    nullable: false
+  description:
+    type: text
+    nullable: true
+  status:
+    enum:
+      - draft
+      - active
+      - paused
+      - archived
+      - failed
+  version:
+    type: integer
+  config:
+    type: json
+  error_count:
+    type: integer
+  last_run_at:
+    type: datetime
+    nullable: true
+
+relationships:
+  project:
+    type: many_to_one
+    target: Project
+  nodes:
+    type: one_to_many
+    target: WorkflowNode
+  executions:
+    type: one_to_many
+    target: Execution

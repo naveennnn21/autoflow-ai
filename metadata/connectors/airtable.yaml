@@ -1,0 +1,28 @@
+name: Airtable
+version: 1.0.0
+description: Airtable spreadsheet-database integration
+auth:
+  type: api_key
+  provider: airtable
+triggers:
+  record_created:
+    description: New record added to table
+    webhook: true
+  record_updated:
+    description: Existing record modified
+    webhook: true
+actions:
+  create_record:
+    description: Add record to table
+    inputs:
+      - base_id: string
+      - table_name: string
+      - fields: json
+  update_record:
+    description: Update record by ID
+  find_records:
+    description: Search records with formula
+  delete_record:
+    description: Delete record
+  list_records:
+    description: List records with pagination

@@ -1,0 +1,47 @@
+primary:
+  - label: Dashboard
+    icon: layout-dashboard
+    path: /dashboard
+  - label: Workflows
+    icon: workflow
+    path: /workflows
+    children:
+      - label: My Workflows
+        path: /workflows
+      - label: Templates
+        path: /workflows/templates
+      - label: Marketplace
+        path: /marketplace
+  - label: Executions
+    icon: play-circle
+    path: /executions
+  - label: Analytics
+    icon: chart-bar
+    path: /analytics
+  - label: Monitoring
+    icon: activity
+    path: /monitoring
+  - label: Connectors
+    icon: puzzle
+    path: /connectors
+  - label: Settings
+    icon: settings
+    path: /settings
+    children:
+      - label: Organization
+        path: /settings/organization
+      - label: Team
+        path: /settings/team
+      - label: Billing
+        path: /settings/billing
+      - label: API Keys
+        path: /settings/api-keys
+      - label: Notifications
+        path: /settings/notifications
+secondary:
+  - label: Help
+    icon: help-circle
+    path: /help
+  - label: Documentation
+    icon: book-open
+    path: /docs

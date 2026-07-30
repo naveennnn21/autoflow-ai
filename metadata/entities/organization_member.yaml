@@ -1,0 +1,29 @@
+name: OrganizationMember
+table: organization_members
+description: Maps users to organizations with roles
+tenant: false
+timestamps: false
+soft_delete: false
+uuid: true
+fields:
+  role:
+    enum:
+      - owner
+      - admin
+      - developer
+      - viewer
+  joined_at:
+    type: datetime
+relationships:
+  organization:
+    type: many_to_one
+    target: Organization
+  user:
+    type: many_to_one
+    target: User
+constraints:
+  uq_org_user:
+    type: unique
+    columns:
+      - organization_id
+      - user_id

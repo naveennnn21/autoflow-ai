@@ -1,0 +1,10 @@
+# Repository configuration for User
+entity: User
+
+searchable_fields: ["email", "full_name"]
+filterable_fields: ["status", "role"]
+sortable_fields: ["email", "full_name", "created_at", "last_login_at"]
+unique_fields: ["email"]
+cache_policy: medium
+cache_ttl: 300
+default_ordering: "-created_at"

@@ -1,0 +1,71 @@
+endpoints:
+  list_workflows:
+    path: /workflows
+    method: GET
+    auth: token
+    scopes: [workflow:read]
+    tenant: true
+    description: List workflows with filtering
+    pagination: true
+    query:
+      project_id: uuid
+      status: string
+      search: string
+    responses:
+      200: Paginated workflow list
+  create_workflow:
+    path: /workflows
+    method: POST
+    auth: token
+    scopes: [workflow:write]
+    tenant: true
+    description: Create a new workflow definition
+    request:
+      body:
+        name: string
+        description: text
+        project_id: uuid
+        config: json
+    responses:
+      201: Workflow created
+  get_workflow:
+    path: /workflows/{id}
+    method: GET
+    auth: token
+    scopes: [workflow:read]
+    tenant: true
+    description: Get workflow with nodes
+    responses:
+      200: Workflow details
+  update_workflow:
+    path: /workflows/{id}
+    method: PATCH
+    auth: token
+    scopes: [workflow:write]
+    tenant: true
+    description: Update workflow
+    responses:
+      200: Workflow updated
+  delete_workflow:
+    path: /workflows/{id}
+    method: DELETE
+    auth: token
+    scopes: [workflow:delete]
+    tenant: true
+    description: Delete workflow
+    responses:
+      204: Workflow deleted
+  deploy_workflow:
+    path: /workflows/{id}/deploy
+    method: POST
+    auth: token
+    scopes: [workflow:deploy]
+    tenant: true
+    description: Deploy workflow to production
+  execute_workflow:
+    path: /workflows/{id}/execute
+    method: POST
+    auth: token
+    scopes: [workflow:execute]
+    tenant: true
+    description: Manually trigger workflow execution
