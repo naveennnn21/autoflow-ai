@@ -1,0 +1,53 @@
+examples:
+  - id: sync_notion_to_google_drive
+    prompt: "When I add a page to my Notion database, save a copy to Google Drive"
+    intent: automation
+    trigger:
+      connector: notion
+      type: database_page_created
+    steps:
+      - connector: google_drive
+        action: upload_file
+        inputs: {}
+    warnings: []
+  - id: daily_slack_digest
+    prompt: "Every morning at 9am, send me a summary of new GitHub issues to Slack"
+    intent: automation
+    trigger:
+      connector: github
+      type: schedule
+    steps:
+      - connector: github
+        action: list_issues
+        inputs: {}
+      - connector: slack
+        action: send_message
+        inputs: {}
+    warnings:
+      - "Scheduling requires a cron trigger; asked to confirm timezone"
+  - id: stripe_refund_notification
+    prompt: "When a Stripe refund is issued, notify the finance team on Discord"
+    intent: automation
+    trigger:
+      connector: stripe
+      type: refund_created
+    steps:
+      - connector: discord
+        action: send_message
+        inputs: {}
+    warnings: []
+  - id: weekly_report
+    prompt: "Generate a weekly sales report and email it"
+    intent: automation
+    trigger:
+      connector: system
+      type: schedule
+    steps:
+      - connector: shopify
+        action: list_orders
+        inputs: {}
+      - connector: gmail
+        action: send_email
+        inputs: {}
+    warnings:
+      - "Recipient address not specified; clarification required"

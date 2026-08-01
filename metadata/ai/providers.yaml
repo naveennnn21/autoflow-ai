@@ -1,0 +1,77 @@
+providers:
+  openai:
+    class: openai.OpenAIProvider
+    env_key: OPENAI_API_KEY
+    base_url: https://api.openai.com/v1
+    default_model: gpt-4o-mini
+    supported_models:
+      - gpt-4o-mini
+      - gpt-4o
+      - gpt-4-turbo
+    capabilities: [chat, json_mode, function_calling]
+    streaming: true
+    max_tokens_default: 2048
+    cost_per_1k_input: 0.00015
+    cost_per_1k_output: 0.0006
+  anthropic:
+    class: anthropic.AnthropicProvider
+    env_key: ANTHROPIC_API_KEY
+    base_url: https://api.anthropic.com/v1
+    default_model: claude-3-5-haiku
+    supported_models:
+      - claude-3-5-haiku
+      - claude-3-5-sonnet
+    capabilities: [chat, function_calling]
+    streaming: true
+    max_tokens_default: 2048
+    cost_per_1k_input: 0.0008
+    cost_per_1k_output: 0.004
+  gemini:
+    class: gemini.GeminiProvider
+    env_key: GEMINI_API_KEY
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    default_model: gemini-1.5-flash
+    supported_models:
+      - gemini-1.5-flash
+      - gemini-1.5-pro
+    capabilities: [chat, json_mode]
+    streaming: true
+    max_tokens_default: 2048
+    cost_per_1k_input: 0.000075
+    cost_per_1k_output: 0.0003
+  openrouter:
+    class: openrouter.OpenRouterProvider
+    env_key: OPENROUTER_API_KEY
+    base_url: https://openrouter.ai/api/v1
+    default_model: openai/gpt-4o-mini
+    supported_models: []
+    capabilities: [chat, json_mode, function_calling]
+    streaming: true
+    max_tokens_default: 2048
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+  ollama:
+    class: ollama.OllamaProvider
+    env_key: ""
+    base_url: http://localhost:11434
+    default_model: llama3.1
+    supported_models: []
+    capabilities: [chat]
+    streaming: true
+    max_tokens_default: 2048
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+  vllm:
+    class: vllm.VLLMProvider
+    env_key: VLLM_API_KEY
+    base_url: http://localhost:8000/v1
+    default_model: ""
+    supported_models: []
+    capabilities: [chat, json_mode]
+    streaming: true
+    max_tokens_default: 2048
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+
+default_provider: openai
+fallback_providers: [anthropic, gemini]

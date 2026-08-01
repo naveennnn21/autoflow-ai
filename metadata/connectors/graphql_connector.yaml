@@ -1,0 +1,151 @@
+name: GraphQL
+version: 1.0.0
+description: Generic GraphQL API connector
+category: generic
+provider: graphql
+module_name: graphql_connector
+authentication:
+  type: bearer
+  provider: graphql
+  supported_scopes:
+    - read
+    - write
+  auth_url: ""
+  token_url: ""
+  requires_refresh: false
+  credential_fields:
+    - endpoint
+    - api_key
+    - bearer_token
+    - headers
+actions:
+  query:
+    description: Execute a GraphQL query
+    kind: read
+    inputs:
+      query: text
+      variables: json
+      operation_name: string
+    outputs:
+      data: json
+      errors: list
+    required_permissions:
+      - read
+    idempotent: true
+  mutation:
+    description: Execute a GraphQL mutation
+    kind: create
+    inputs:
+      query: text
+      variables: json
+      operation_name: string
+    outputs:
+      data: json
+      errors: list
+    required_permissions:
+      - write
+    idempotent: false
+  introspection:
+    description: Fetch the GraphQL schema via introspection
+    kind: read
+    inputs:
+      include_deprecated: boolean
+    outputs:
+      schema: json
+    required_permissions:
+      - read
+    idempotent: true
+  subscription:
+    description: Open a GraphQL subscription stream
+    kind: stream
+    inputs:
+      query: text
+      variables: json
+    outputs:
+      events: stream
+    required_permissions:
+      - read
+    idempotent: false
+    streaming: true
+triggers:
+  subscription_event:
+    description: Triggered on GraphQL subscription events
+    kind: system
+    webhook: false
+    polling_interval_seconds: 0
+    supported_events:
+      - graphql.subscription_event
+  manual:
+    description: Manual trigger
+    kind: manual
+    webhook: false
+    polling_interval_seconds: 0
+    supported_events: []
+rate_limits:
+  default: 120/minute
+  rules:
+    query: 60/minute
+    mutation: 60/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: false
+  events: []
+  secret_required: false
+supported_events:
+  - graphql.subscription_event
+supported_objects:
+  - query
+  - mutation
+  - subscription
+pagination:
+  enabled: true
+  default_page_size: 50
+  max_page_size: 1000
+  cursor_field: after
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: true
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: false
+  batching: false
+  streaming: true
+  pagination: true
+  file_upload: false
+  file_download: false
+  long_running: true
+permissions:
+  read:
+    - read
+  write:
+    - write
+health_check:
+  endpoint: ""
+  method: POST
+  timeout_seconds: 10
+documentation:
+  url: https://graphql.org
+  setup_guide: Configure the GraphQL endpoint and any authentication headers.
+  example_prompt: Query user data from a GraphQL API
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

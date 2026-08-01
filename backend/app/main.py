@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+from app.middleware.manager import register_middleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import close_db, init_db
@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     await close_cache()
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+register_middleware(app)
 
 @app.get("/health")
 async def health():

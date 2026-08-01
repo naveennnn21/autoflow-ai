@@ -1,31 +1,203 @@
 name: Shopify
 version: 1.0.0
 description: Shopify e-commerce integration
-auth:
+category: ecommerce
+provider: shopify
+module_name: shopify
+authentication:
   type: oauth2
   provider: shopify
+  supported_scopes:
+    - read_products
+    - write_products
+    - read_orders
+    - write_orders
+    - read_customers
+  auth_url: https://{shop}.myshopify.com/admin/oauth/authorize
+  token_url: https://{shop}.myshopify.com/admin/oauth/access_token
+  requires_refresh: false
+  credential_fields:
+    - shop
+    - client_id
+    - client_secret
+    - access_token
+actions:
+  create_product:
+    description: Create a product
+    kind: create
+    inputs:
+      title: string
+      body_html: text
+      vendor: string
+      product_type: string
+      tags: list
+      price: string
+    outputs:
+      product_id: integer
+      handle: string
+    required_permissions:
+      - write_products
+    idempotent: false
+  update_product:
+    description: Update a product
+    kind: update
+    inputs:
+      product_id: integer
+      title: string
+      body_html: text
+      price: string
+      status: string
+    outputs:
+      product_id: integer
+    required_permissions:
+      - write_products
+  list_orders:
+    description: List orders
+    kind: list
+    inputs:
+      status: string
+      limit: integer
+      since_id: integer
+    outputs:
+      orders: list
+    required_permissions:
+      - read_orders
+  get_order:
+    description: Fetch an order
+    kind: read
+    inputs:
+      order_id: integer
+    outputs:
+      order: object
+    required_permissions:
+      - read_orders
+  create_order:
+    description: Create a draft order
+    kind: create
+    inputs:
+      line_items: json
+      customer: json
+      email: string
+    outputs:
+      order_id: integer
+    required_permissions:
+      - write_orders
+    idempotent: false
+  list_products:
+    description: List products
+    kind: list
+    inputs:
+      limit: integer
+      since_id: integer
+    outputs:
+      products: list
+    required_permissions:
+      - read_products
 triggers:
   order_created:
-    description: New order placed
+    description: Triggered when an order is created
+    kind: webhook
     webhook: true
-  order_fulfilled:
-    description: Order fulfilled
+    polling_interval_seconds: 0
+    supported_events:
+      - shopify.orders_create
+  order_paid:
+    description: Triggered when an order is paid
+    kind: webhook
     webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - shopify.orders_paid
   product_updated:
-    description: Product details changed
+    description: Triggered when a product changes
+    kind: webhook
     webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - shopify.products_update
   customer_created:
-    description: New customer registered
+    description: Triggered when a customer is created
+    kind: webhook
     webhook: true
-actions:
-  get_orders:
-    description: Fetch latest orders
-    inputs:
-      - status: string
-      - limit: integer
-  create_product:
-    description: Create new product listing
-  update_inventory:
-    description: Update stock levels
-  get_customers:
-    description: List customers with filters
+    polling_interval_seconds: 0
+    supported_events:
+      - shopify.customers_create
+rate_limits:
+  default: 40/second
+  rules:
+    list_orders: 2/second
+    create_product: 4/second
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: true
+  events:
+    - shopify.orders_create
+    - shopify.orders_paid
+    - shopify.products_update
+    - shopify.customers_create
+  secret_required: true
+supported_events:
+  - shopify.orders_create
+  - shopify.orders_paid
+  - shopify.products_update
+  - shopify.customers_create
+supported_objects:
+  - product
+  - order
+  - customer
+  - inventory
+pagination:
+  enabled: true
+  default_page_size: 50
+  max_page_size: 250
+  cursor_field: since_id
+batching:
+  enabled: true
+  max_batch_size: 250
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: true
+  batching: true
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - read_products
+    - read_orders
+    - read_customers
+  write:
+    - write_products
+    - write_orders
+health_check:
+  endpoint: https://{shop}.myshopify.com/admin/api/2024-01/shop.json
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://shopify.dev/docs/api/admin
+  setup_guide: Create a Shopify app, install it on the store, and capture the access token.
+  example_prompt: Send a thank-you email when an order is paid
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

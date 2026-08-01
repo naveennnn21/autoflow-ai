@@ -1,0 +1,27 @@
+# AutoFlow AI - User domain events
+#
+# Account lifecycle events. user.created is idempotent so an account can
+# only be created once.
+
+events:
+  users:
+    user.created:
+      description: New user account created
+      version: 1
+      idempotent: true
+      payload:
+        - user_id
+        - email
+        - role
+    user.updated:
+      description: User profile updated
+      version: 1
+      payload:
+        - user_id
+        - email
+        - changed_fields
+    user.deleted:
+      description: User account deleted
+      version: 1
+      payload:
+        - user_id

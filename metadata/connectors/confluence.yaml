@@ -1,0 +1,162 @@
+name: Confluence
+version: 1.0.0
+description: Confluence pages and spaces
+category: productivity
+provider: atlassian
+module_name: confluence
+authentication:
+  type: oauth2
+  provider: atlassian
+  supported_scopes:
+    - read:confluence-space.summary
+    - write:confluence-content
+    - read:confluence-content.all
+    - offline_access
+  auth_url: https://auth.atlassian.com/authorize
+  token_url: https://auth.atlassian.com/oauth/token
+  requires_refresh: true
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - refresh_token
+actions:
+  create_page:
+    description: Create a Confluence page
+    kind: create
+    inputs:
+      space_key: string
+      title: string
+      body: text
+      parent_page_id: string
+    outputs:
+      page_id: string
+      page_url: string
+    required_permissions:
+      - write:confluence-content
+    idempotent: false
+  update_page:
+    description: Update a Confluence page
+    kind: update
+    inputs:
+      page_id: string
+      title: string
+      body: text
+      version: integer
+    outputs:
+      page_id: string
+    required_permissions:
+      - write:confluence-content
+  get_page:
+    description: Fetch a Confluence page
+    kind: read
+    inputs:
+      page_id: string
+    outputs:
+      page: object
+    required_permissions:
+      - read:confluence-content.all
+  search_pages:
+    description: Search pages with CQL
+    kind: search
+    inputs:
+      cql: string
+      limit: integer
+    outputs:
+      pages: list
+    required_permissions:
+      - read:confluence-content.all
+  list_spaces:
+    description: List accessible spaces
+    kind: list
+    inputs:
+      limit: integer
+    outputs:
+      spaces: list
+    required_permissions:
+      - read:confluence-space.summary
+triggers:
+  page_created:
+    description: Triggered when a page is created
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 300
+    supported_events:
+      - confluence.page_created
+  page_updated:
+    description: Triggered when a page is updated
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 300
+    supported_events:
+      - confluence.page_updated
+rate_limits:
+  default: 1000/minute
+  rules:
+    search_pages: 60/minute
+    create_page: 60/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 2.0
+  max_delay: 120.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: true
+  default_interval_seconds: 300
+webhooks:
+  enabled: false
+  events:
+    - confluence.page_updated
+  secret_required: false
+supported_events:
+  - confluence.page_created
+  - confluence.page_updated
+supported_objects:
+  - page
+  - space
+  - attachment
+pagination:
+  enabled: true
+  default_page_size: 25
+  max_page_size: 200
+  cursor_field: next
+batching:
+  enabled: false
+  max_batch_size: 50
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: true
+  webhooks: false
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: true
+  long_running: false
+permissions:
+  read:
+    - read:confluence-content.all
+  write:
+    - write:confluence-content
+health_check:
+  endpoint: https://{site}.atlassian.net/wiki/rest/api/content
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://developer.atlassian.com/cloud/confluence
+  setup_guide: Create a Confluence Cloud app with OAuth 2.0 and content scopes.
+  example_prompt: Publish release notes to the Confluence wiki
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

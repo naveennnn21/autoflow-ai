@@ -1,28 +1,170 @@
 name: Airtable
 version: 1.0.0
 description: Airtable spreadsheet-database integration
-auth:
+category: database
+provider: airtable
+module_name: airtable
+authentication:
   type: api_key
   provider: airtable
-triggers:
-  record_created:
-    description: New record added to table
-    webhook: true
-  record_updated:
-    description: Existing record modified
-    webhook: true
+  supported_scopes:
+    - data.records:read
+    - data.records:write
+    - schema.bases:read
+  auth_url: ""
+  token_url: ""
+  requires_refresh: false
+  credential_fields:
+    - api_key
+    - base_id
+    - table_name
 actions:
   create_record:
-    description: Add record to table
+    description: Add a record to a table
+    kind: create
     inputs:
-      - base_id: string
-      - table_name: string
-      - fields: json
+      base_id: string
+      table_name: string
+      fields: json
+      typecast: boolean
+    outputs:
+      record_id: string
+      created_time: datetime
+    required_permissions:
+      - data.records:write
+    idempotent: false
   update_record:
-    description: Update record by ID
+    description: Update a record by id
+    kind: update
+    inputs:
+      base_id: string
+      table_name: string
+      record_id: string
+      fields: json
+    outputs:
+      record_id: string
+    required_permissions:
+      - data.records:write
   find_records:
-    description: Search records with formula
+    description: Search records with a formula
+    kind: search
+    inputs:
+      base_id: string
+      table_name: string
+      formula: string
+      fields: list
+      max_records: integer
+    outputs:
+      records: list
+    required_permissions:
+      - data.records:read
   delete_record:
-    description: Delete record
+    description: Delete a record
+    kind: delete
+    inputs:
+      base_id: string
+      table_name: string
+      record_id: string
+    outputs:
+      deleted: boolean
+    required_permissions:
+      - data.records:write
   list_records:
     description: List records with pagination
+    kind: list
+    inputs:
+      base_id: string
+      table_name: string
+      page_size: integer
+      offset: string
+      sort: json
+    outputs:
+      records: list
+      offset: string
+    required_permissions:
+      - data.records:read
+triggers:
+  record_created:
+    description: Triggered when a record is added
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 60
+    supported_events:
+      - airtable.record_created
+  record_updated:
+    description: Triggered when a record is modified
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 60
+    supported_events:
+      - airtable.record_updated
+rate_limits:
+  default: 5/second
+  rules:
+    create_record: 5/second
+    list_records: 5/second
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: true
+  default_interval_seconds: 60
+webhooks:
+  enabled: false
+  events:
+    - airtable.record_created
+  secret_required: false
+supported_events:
+  - airtable.record_created
+  - airtable.record_updated
+supported_objects:
+  - base
+  - table
+  - record
+pagination:
+  enabled: true
+  default_page_size: 100
+  max_page_size: 100
+  cursor_field: offset
+batching:
+  enabled: true
+  max_batch_size: 10
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: true
+  webhooks: false
+  batching: true
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - data.records:read
+  write:
+    - data.records:write
+health_check:
+  endpoint: https://api.airtable.com/v0/meta/bases
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://airtable.com/developers/web/api
+  setup_guide: Generate an Airtable personal access token and note the base id and table name.
+  example_prompt: Add leads from a form to Airtable
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

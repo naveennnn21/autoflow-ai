@@ -1,0 +1,18 @@
+# AutoFlow AI - System domain events
+#
+# Platform/system health and operational events.
+
+events:
+  system:
+    system.health_ok:
+      description: Platform health check passed
+      version: 1
+      payload:
+        - component
+        - latency_ms
+    system.error:
+      description: Unhandled platform error
+      version: 1
+      payload:
+        - component
+        - error

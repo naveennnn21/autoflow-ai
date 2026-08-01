@@ -181,16 +181,19 @@ class TestAPIKeyService:
     # --- Event publishing tests ---
 
     async def test_event_published_on_create(self, service, mock_repository):
-        """Test event published for create."""
-        from app.services.base import EventBus, BaseEvent
+        """Test event published for create on the platform event bus."""
+        from app.events import subscribe, unsubscribe
         mock_obj = MagicMock(spec=APIKey)
         mock_obj.id = uuid.uuid4()
         mock_repository.create.return_value = mock_obj
         events = []
         async def collector(event): events.append(event)
-        EventBus.register("APIKey.Created", collector)
-        await service.create(APIKeyCreate())
-        assert len(events) > 0, "No events were published"
+        subscribe("APIKey.Created", collector)
+        try:
+            await service.create(APIKeyCreate())
+            assert len(events) > 0, "No events were published"
+        finally:
+            unsubscribe("APIKey.Created", collector)
 
 
     # --- Retry behavior tests ---

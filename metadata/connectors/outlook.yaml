@@ -1,0 +1,169 @@
+name: Outlook
+version: 1.0.0
+description: Microsoft Outlook email and calendar integration
+category: email
+provider: microsoft
+module_name: outlook
+authentication:
+  type: oauth2
+  provider: microsoft
+  supported_scopes:
+    - Mail.ReadWrite
+    - Mail.Send
+    - Calendars.ReadWrite
+    - offline_access
+  auth_url: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+  token_url: https://login.microsoftonline.com/common/oauth2/v2.0/token
+  requires_refresh: true
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - refresh_token
+actions:
+  send_email:
+    description: Send an email via Microsoft Graph
+    kind: create
+    inputs:
+      to: string
+      cc: string
+      bcc: string
+      subject: string
+      body: text
+      importance: string
+    outputs:
+      message_id: string
+    required_permissions:
+      - Mail.Send
+    idempotent: true
+  search_emails:
+    description: Search mailbox messages
+    kind: search
+    inputs:
+      query: string
+      top: integer
+    outputs:
+      messages: list
+    required_permissions:
+      - Mail.Read
+  create_event:
+    description: Create a calendar event
+    kind: create
+    inputs:
+      subject: string
+      start_time: datetime
+      end_time: datetime
+      attendees: list
+      body: text
+    outputs:
+      event_id: string
+    required_permissions:
+      - Calendars.ReadWrite
+  list_events:
+    description: List calendar events
+    kind: list
+    inputs:
+      start_time: datetime
+      end_time: datetime
+      top: integer
+    outputs:
+      events: list
+    required_permissions:
+      - Calendars.Read
+  get_message:
+    description: Fetch a message by id
+    kind: read
+    inputs:
+      message_id: string
+    outputs:
+      message: object
+    required_permissions:
+      - Mail.Read
+triggers:
+  new_email:
+    description: Triggered when a new email arrives
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 120
+    supported_events:
+      - outlook.email_received
+  event_created:
+    description: Triggered when a calendar event is created
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 300
+    supported_events:
+      - outlook.event_created
+rate_limits:
+  default: 1000/hour
+  rules:
+    send_email: 100/hour
+    search_emails: 250/hour
+retry_policy:
+  max_attempts: 3
+  base_delay: 2.0
+  max_delay: 120.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: true
+  default_interval_seconds: 120
+webhooks:
+  enabled: false
+  events:
+    - outlook.email_received
+  secret_required: false
+supported_events:
+  - outlook.email_received
+  - outlook.event_created
+supported_objects:
+  - message
+  - event
+  - contact
+pagination:
+  enabled: true
+  default_page_size: 50
+  max_page_size: 1000
+  cursor_field: nextLink
+batching:
+  enabled: false
+  max_batch_size: 50
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: true
+  webhooks: false
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: true
+  long_running: false
+permissions:
+  read:
+    - Mail.Read
+    - Calendars.Read
+  write:
+    - Mail.Send
+    - Mail.ReadWrite
+    - Calendars.ReadWrite
+health_check:
+  endpoint: https://graph.microsoft.com/v1.0/me
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://learn.microsoft.com/graph
+  setup_guide: Register an Azure app, grant Microsoft Graph delegated permissions, and configure OAuth redirect URIs.
+  example_prompt: Send a calendar invite for the next team sync
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

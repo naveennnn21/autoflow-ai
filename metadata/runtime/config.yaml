@@ -1,0 +1,24 @@
+# AutoFlow AI - Workflow Runtime configuration (metadata-driven)
+#
+# The Workflow Runtime Generator consumes this file plus
+# metadata/workflows/*.yaml (templates, execution states, retry policies)
+# to produce backend/app/runtime/*. Runtime tuning values below are
+# emitted into the generated runtime at generation time.
+
+name: Default
+description: Production workflow runtime configuration.
+
+runtime:
+  default_retry_policy: exponential_backoff
+  max_concurrency: 4
+  queue_size: 1000
+  worker_count: 4
+  checkpoint_interval_seconds: 30
+  checkpoint_enabled: true
+  rollback_enabled: true
+  monitor_interval_seconds: 5
+  lock_timeout_seconds: 30
+  task_timeout_seconds: 300
+  metrics_enabled: true
+  events_enabled: true
+  versioning_enabled: true

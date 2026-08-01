@@ -1,0 +1,179 @@
+name: Linear
+version: 1.0.0
+description: Linear issue tracking and project management
+category: productivity
+provider: linear
+module_name: linear
+authentication:
+  type: bearer
+  provider: linear
+  supported_scopes:
+    - read
+    - write
+    - issues:create
+  auth_url: https://linear.app/oauth/authorize
+  token_url: https://api.linear.app/oauth/token
+  requires_refresh: true
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - api_key
+actions:
+  create_issue:
+    description: Create a Linear issue
+    kind: create
+    inputs:
+      team_id: string
+      title: string
+      description: text
+      priority: integer
+      assignee_id: string
+      labels: list
+    outputs:
+      issue_id: string
+      issue_identifier: string
+      issue_url: string
+    required_permissions:
+      - issues:create
+    idempotent: false
+  update_issue:
+    description: Update a Linear issue
+    kind: update
+    inputs:
+      issue_id: string
+      title: string
+      description: text
+      state_id: string
+      priority: integer
+    outputs:
+      issue_id: string
+    required_permissions:
+      - write
+  search_issues:
+    description: Search issues by filter
+    kind: search
+    inputs:
+      query: string
+      team_id: string
+      state_id: string
+      first: integer
+    outputs:
+      issues: list
+    required_permissions:
+      - read
+  get_issue:
+    description: Fetch a single issue
+    kind: read
+    inputs:
+      issue_id: string
+    outputs:
+      issue: object
+    required_permissions:
+      - read
+  list_teams:
+    description: List teams the user can access
+    kind: list
+    inputs:
+      first: integer
+    outputs:
+      teams: list
+    required_permissions:
+      - read
+triggers:
+  issue_created:
+    description: Triggered when an issue is created
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - linear.issue_created
+  issue_updated:
+    description: Triggered when an issue is updated
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - linear.issue_updated
+  comment_created:
+    description: Triggered when a comment is created
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - linear.comment_created
+rate_limits:
+  default: 400/minute
+  rules:
+    search_issues: 60/minute
+    create_issue: 60/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: true
+  events:
+    - linear.issue_created
+    - linear.issue_updated
+    - linear.comment_created
+  secret_required: true
+supported_events:
+  - linear.issue_created
+  - linear.issue_updated
+  - linear.comment_created
+supported_objects:
+  - issue
+  - team
+  - project
+  - comment
+pagination:
+  enabled: true
+  default_page_size: 50
+  max_page_size: 250
+  cursor_field: after
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: true
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - read
+  write:
+    - write
+    - issues:create
+health_check:
+  endpoint: https://api.linear.app/graphql
+  method: POST
+  timeout_seconds: 10
+documentation:
+  url: https://developers.linear.app
+  setup_guide: Create a Linear API key or OAuth app and grant read/write scopes.
+  example_prompt: Create a Linear issue for onboarding tasks
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

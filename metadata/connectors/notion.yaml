@@ -1,25 +1,177 @@
 name: Notion
 version: 1.0.0
-description: Notion workspace integration
-auth:
+description: Notion pages and databases
+category: productivity
+provider: notion
+module_name: notion
+authentication:
   type: oauth2
   provider: notion
-triggers:
-  page_updated:
-    description: Triggered when page content changes
-    webhook: true
-  database_item_added:
-    description: New database item created
+  supported_scopes:
+    - read
+    - write
+  auth_url: https://api.notion.com/v1/oauth/authorize
+  token_url: https://api.notion.com/v1/oauth/token
+  requires_refresh: false
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - integration_token
 actions:
   create_page:
-    description: Create new page in database
+    description: Create a page in a parent
+    kind: create
     inputs:
-      - database_id: string
-      - title: string
-      - content: text
+      parent_id: string
+      parent_type: string
+      title: string
+      properties: json
+      content: json
+    outputs:
+      page_id: string
+      page_url: string
+    required_permissions:
+      - write
+    idempotent: false
   update_page:
-    description: Update existing page
+    description: Update page properties
+    kind: update
+    inputs:
+      page_id: string
+      properties: json
+      archived: boolean
+    outputs:
+      page_id: string
+    required_permissions:
+      - write
   query_database:
-    description: Query database with filters
-  append_block:
-    description: Append block to page
+    description: Query a Notion database
+    kind: search
+    inputs:
+      database_id: string
+      filter: json
+      sorts: json
+      page_size: integer
+    outputs:
+      results: list
+      has_more: boolean
+    required_permissions:
+      - read
+  get_page:
+    description: Fetch a page
+    kind: read
+    inputs:
+      page_id: string
+    outputs:
+      page: object
+    required_permissions:
+      - read
+  create_database:
+    description: Create a database
+    kind: create
+    inputs:
+      parent_id: string
+      title: string
+      properties: json
+    outputs:
+      database_id: string
+    required_permissions:
+      - write
+    idempotent: false
+  search:
+    description: Search pages and databases
+    kind: search
+    inputs:
+      query: string
+      filter: json
+      page_size: integer
+    outputs:
+      results: list
+    required_permissions:
+      - read
+triggers:
+  page_created:
+    description: Triggered when a page is created
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 300
+    supported_events:
+      - notion.page_created
+  database_updated:
+    description: Triggered when a database changes
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 300
+    supported_events:
+      - notion.database_updated
+rate_limits:
+  default: 3/second
+  rules:
+    query_database: 3/second
+    create_page: 3/second
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: true
+  default_interval_seconds: 300
+webhooks:
+  enabled: false
+  events:
+    - notion.page_created
+  secret_required: false
+supported_events:
+  - notion.page_created
+  - notion.database_updated
+supported_objects:
+  - page
+  - database
+  - block
+pagination:
+  enabled: true
+  default_page_size: 100
+  max_page_size: 100
+  cursor_field: start_cursor
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: true
+  webhooks: false
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - read
+  write:
+    - write
+health_check:
+  endpoint: https://api.notion.com/v1/users/me
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://developers.notion.com
+  setup_guide: Create an integration in Notion, share your database with it, and copy the token.
+  example_prompt: Add new signups to a Notion CRM database
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

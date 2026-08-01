@@ -1,0 +1,42 @@
+# AutoFlow AI - Workflow domain events
+#
+# Lifecycle events for workflow executions. workflow.started is declared
+# idempotent so the same workflow execution can only be started once.
+
+events:
+  workflow:
+    workflow.started:
+      description: Workflow execution started
+      version: 1
+      idempotent: true
+      payload:
+        - workflow_id
+        - execution_id
+        - triggered_by
+        - timestamp
+    workflow.completed:
+      description: Workflow execution completed
+      version: 1
+      payload:
+        - workflow_id
+        - execution_id
+        - duration_ms
+        - cost
+        - timestamp
+    workflow.failed:
+      description: Workflow execution failed
+      version: 1
+      payload:
+        - workflow_id
+        - execution_id
+        - error
+        - retry_attempt
+        - timestamp
+    execution.retried:
+      description: Failed execution being retried
+      version: 1
+      payload:
+        - workflow_id
+        - execution_id
+        - attempt
+        - max_attempts

@@ -1,0 +1,36 @@
+constraints:
+  max_steps_per_workflow: 50
+  max_parallel_branches: 8
+  max_depth: 10
+  required_plan_fields:
+    - name
+    - trigger
+    - steps
+    - graph
+
+  graph:
+    acyclic: true
+    connected: true
+    single_entry: true
+    single_exit: true
+
+  parameters:
+    require_provided: true
+    allow_defaults: true
+    max_unresolved_before_clarify: 2
+
+  connector:
+    require_known_connector: true
+    require_known_action: true
+    require_known_trigger: true
+    allow_unsupported_capability: false
+
+  auth:
+    require_credentials_for_private_connectors: true
+    allow_public_connectors_without_credentials: true
+
+  limits:
+    max_inputs_per_action: 20
+    max_outputs_per_action: 20
+    max_connector_calls: 200
+    max_retries: 5

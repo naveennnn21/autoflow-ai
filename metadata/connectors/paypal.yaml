@@ -1,0 +1,181 @@
+name: PayPal
+version: 1.0.0
+description: PayPal payments integration
+category: payments
+provider: paypal
+module_name: paypal
+authentication:
+  type: oauth2
+  provider: paypal
+  supported_scopes:
+    - https://uri.paypal.com/services/payments/payment
+    - https://uri.paypal.com/services/payments/refund
+    - https://uri.paypal.com/services/subscriptions
+  auth_url: ""
+  token_url: https://api-m.paypal.com/v1/oauth2/token
+  requires_refresh: true
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - refresh_token
+actions:
+  create_payment:
+    description: Create a payment (order)
+    kind: create
+    inputs:
+      amount: string
+      currency: string
+      intent: string
+      return_url: string
+      cancel_url: string
+    outputs:
+      payment_id: string
+      approval_url: string
+      status: string
+    required_permissions:
+      - payments
+    idempotent: true
+  capture_payment:
+    description: Capture an authorized payment
+    kind: update
+    inputs:
+      order_id: string
+    outputs:
+      capture_id: string
+      status: string
+    required_permissions:
+      - payments
+  refund_payment:
+    description: Refund a captured payment
+    kind: create
+    inputs:
+      capture_id: string
+      amount: string
+      currency: string
+    outputs:
+      refund_id: string
+      status: string
+    required_permissions:
+      - refunds
+    idempotent: true
+  get_payment:
+    description: Fetch payment details
+    kind: read
+    inputs:
+      order_id: string
+    outputs:
+      order: object
+    required_permissions:
+      - payments
+  create_subscription:
+    description: Create a subscription plan
+    kind: create
+    inputs:
+      plan_id: string
+      subscriber_email: string
+      return_url: string
+    outputs:
+      subscription_id: string
+      status: string
+    required_permissions:
+      - subscriptions
+    idempotent: false
+triggers:
+  payment_completed:
+    description: Triggered when a payment is completed
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - paypal.payment_completed
+  payment_failed:
+    description: Triggered when a payment fails
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - paypal.payment_failed
+  subscription_cancelled:
+    description: Triggered when a subscription is cancelled
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - paypal.subscription_cancelled
+rate_limits:
+  default: 500/minute
+  rules:
+    create_payment: 60/minute
+    refund_payment: 60/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: true
+  events:
+    - paypal.payment_completed
+    - paypal.payment_failed
+    - paypal.subscription_cancelled
+  secret_required: true
+supported_events:
+  - paypal.payment_completed
+  - paypal.payment_failed
+  - paypal.subscription_cancelled
+supported_objects:
+  - payment
+  - order
+  - refund
+  - subscription
+pagination:
+  enabled: true
+  default_page_size: 20
+  max_page_size: 100
+  cursor_field: page
+batching:
+  enabled: false
+  max_batch_size: 50
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: true
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: false
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - payments
+  write:
+    - payments
+    - refunds
+    - subscriptions
+health_check:
+  endpoint: https://api-m.paypal.com/v1/identity/oauth2/userinfo
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://developer.paypal.com
+  setup_guide: Create a PayPal REST app to get client ID and secret, and configure webhooks.
+  example_prompt: Charge a customer for a subscription renewal
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

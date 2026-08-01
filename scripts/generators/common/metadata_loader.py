@@ -9,8 +9,11 @@ import pathlib
 from typing import Any, Dict, List, Optional, Set
 
 from scripts.generators.common.intermediate_model import (
-    APIDef, APIEndpointDef, ConstraintDef, EntityDef, FieldDef,
-    IndexDef, MetadataModel, RelationshipDef, RepositoryDef, ServiceDef,
+    APIDef, APIEndpointDef, ConnectorAction, ConnectorAuth, ConnectorCapability,
+    ConnectorDef, ConnectorPolling, ConnectorRateLimit, ConnectorTrigger,
+    ConnectorWebhook, ConstraintDef, EntityDef, EventDef, FieldDef, IndexDef,
+    MetadataModel, MiddlewareDef, OptimizationRuleDef, PlanConstraintDef,
+    PlannerDef, RelationshipDef, RepositoryDef, RuntimeDef, ServiceDef,
 )
 
 # Type mappings from YAML to internal types
@@ -180,6 +183,16 @@ class MetadataLoader:
         self._load_service_metadata(model)
         # Load API metadata
         self._load_api_metadata(model)
+        # Load middleware metadata
+        self._load_middleware_metadata(model)
+        # Load event bus metadata
+        self._load_events_metadata(model)
+        # Load workflow runtime metadata
+        self._load_runtime_metadata(model)
+        # Load connector metadata
+        self._load_connectors_metadata(model)
+        # Load AI planner metadata
+        self._load_ai_metadata(model)
         self._cache = model
         return model
 
@@ -335,6 +348,433 @@ class MetadataLoader:
                     endpoints=endpoints_list,
                     tags=[tag_name],
                 )
+
+    def _load_middleware_metadata(self, model: MetadataModel):
+        """Load middleware metadata from metadata/middleware/.
+
+        Each YAML file describes a middleware stack. The ``middleware``
+        mapping keys are middleware names; their values configure
+        enablement, registration order, kind, and per-middleware options.
+        """
+        mw_dir = self.metadata_dir / 'middleware'
+        if not mw_dir.exists():
+            return
+        for f in sorted(mw_dir.glob('*.yaml')):
+            data = self._load_yaml(f)
+            if not data:
+                continue
+            entries = data.get('middleware', {})
+            if not isinstance(entries, dict):
+                continue
+            for name, config in entries.items():
+                if not isinstance(config, dict):
+                    continue
+                model.middleware[name] = MiddlewareDef(
+                    name=name,
+                    enabled=config.get('enabled', True),
+                    order=int(config.get('order', 100)),
+                    kind=config.get('kind', 'base'),
+                    description=config.get('description', ''),
+                    options=config.get('options', {}) or {},
+                )
+
+    def _load_events_metadata(self, model: MetadataModel):
+        """Load event bus metadata from metadata/events/.
+
+        Each YAML file may contribute:
+
+        - ``events``: event definitions (category -> name -> config)
+        - ``handlers``: event type -> list of generated handler module names
+        - ``bus``: bus configuration (serializer, persistence, retry,
+          dead-letter, versioning)
+
+        Definitions merge across files (incoming non-empty values win), so
+        a dedicated bus config file can coexist with event catalog files.
+        """
+        ev_dir = self.metadata_dir / 'events'
+        if not ev_dir.exists():
+            return
+        for f in sorted(ev_dir.glob('*.yaml')):
+            data = self._load_yaml(f)
+            if not data:
+                continue
+            bus = data.get('bus')
+            if isinstance(bus, dict):
+                self._merge_event_bus_config(model, bus)
+            handlers = data.get('handlers')
+            if isinstance(handlers, dict):
+                for event_type, names in handlers.items():
+                    if isinstance(names, list):
+                        model.event_handlers[event_type] = [str(n) for n in names]
+                    elif isinstance(names, str):
+                        model.event_handlers[event_type] = [
+                            n.strip() for n in names.split(',') if n.strip()
+                        ]
+            events = data.get('events')
+            if not isinstance(events, dict):
+                continue
+            for category, defs in events.items():
+                if not isinstance(defs, dict):
+                    continue
+                for name, config in defs.items():
+                    self._merge_event_def(model, name, category, config)
+        if not model.event_bus_config:
+            model.event_bus_config = self._default_event_bus_config()
+
+    @staticmethod
+    def _default_event_bus_config() -> Dict[str, Any]:
+        """Fallback bus configuration when metadata provides none."""
+        return {
+            "serializer": "json",
+            "persistence": {
+                "enabled": True, "max_events": 10000, "storage": "memory",
+            },
+            "retry": {
+                "enabled": True, "max_attempts": 3, "base_delay": 0.5,
+                "max_delay": 10.0, "backoff_factor": 2.0,
+            },
+            "dead_letter": {"enabled": True, "max_retries": 5},
+            "versioning": {"enabled": True},
+        }
+
+    @staticmethod
+    def _merge_event_bus_config(model: MetadataModel, bus: dict):
+        """Deep-merge a bus: section into the model config."""
+        for key, value in bus.items():
+            existing = model.event_bus_config.get(key)
+            if isinstance(value, dict) and isinstance(existing, dict):
+                merged = dict(existing)
+                merged.update(value)
+                model.event_bus_config[key] = merged
+            else:
+                model.event_bus_config[key] = value
+
+    @staticmethod
+    def _merge_event_def(model: MetadataModel, name: str, category: str,
+                         config: Any):
+        """Merge an event definition, keeping non-empty values."""
+        existing = model.events.get(name)
+        if existing is None:
+            existing = EventDef(name=name, category=category)
+            model.events[name] = existing
+        if isinstance(config, str):
+            existing.description = config
+            return
+        if not isinstance(config, dict):
+            return
+        if config.get('description'):
+            existing.description = config['description']
+        if 'version' in config:
+            try:
+                existing.version = int(config['version'])
+            except (TypeError, ValueError):
+                pass
+        if 'idempotent' in config:
+            existing.idempotent = bool(config['idempotent'])
+        payload = config.get('payload', [])
+        if payload:
+            existing.payload = [str(p) for p in payload]
+        handlers = config.get('handlers', [])
+        if handlers:
+            existing.handlers = [str(h) for h in handlers]
+            model.event_handlers[name] = existing.handlers
+
+    def _load_runtime_metadata(self, model: MetadataModel):
+        """Load workflow runtime metadata.
+
+        Combines metadata/runtime/*.yaml (runtime tuning config) with
+        metadata/workflows/*.yaml (templates, execution states, retry
+        policies) into a single RuntimeDef consumed by the runtime
+        generator.
+        """
+        runtime_dir = self.metadata_dir / 'runtime'
+        workflows_dir = self.metadata_dir / 'workflows'
+        rdef = RuntimeDef()
+
+        if runtime_dir.exists():
+            for f in sorted(runtime_dir.glob('*.yaml')):
+                data = self._load_yaml(f)
+                if not data:
+                    continue
+                if data.get('name'):
+                    rdef.name = str(data['name'])
+                if data.get('description'):
+                    rdef.description = str(data['description'])
+                cfg = data.get('runtime') or {}
+                if isinstance(cfg, dict):
+                    rdef.config.update(cfg)
+
+        if workflows_dir.exists():
+            for f in sorted(workflows_dir.glob('*.yaml')):
+                data = self._load_yaml(f)
+                if not data:
+                    continue
+                templates = data.get('templates')
+                if isinstance(templates, dict):
+                    rdef.templates.update(templates)
+                states = data.get('states')
+                if isinstance(states, dict):
+                    rdef.states.update(states)
+                retries = data.get('retry_policies')
+                if isinstance(retries, dict):
+                    rdef.retry_policies.update(retries)
+
+        if rdef.config or rdef.templates or rdef.states or rdef.retry_policies:
+            model.runtime = rdef
+
+    def _load_connectors_metadata(self, model: MetadataModel):
+        """Load connector metadata from metadata/connectors/.
+
+        Each YAML file describes one connector: identity, authentication,
+        actions, triggers, rate limits, retry policy, timeouts, polling,
+        webhooks, supported events/objects, capabilities, permissions,
+        health checks, documentation, deprecation policy, and
+        dependencies. The model is keyed by generated module name.
+        """
+        conn_dir = self.metadata_dir / 'connectors'
+        if not conn_dir.exists():
+            return
+        for f in sorted(conn_dir.glob('*.yaml')):
+            data = self._load_yaml(f)
+            if not data or not isinstance(data, dict):
+                continue
+            name = data.get('name', '')
+            if not name:
+                continue
+            module_name = str(data.get('module_name') or f.stem)
+            auth = data.get('authentication', data.get('auth')) or {}
+            if not isinstance(auth, dict):
+                auth = {}
+            actions = data.get('actions') or {}
+            triggers = data.get('triggers') or {}
+            rate_limits = data.get('rate_limits') or {}
+            if not isinstance(rate_limits, dict):
+                rate_limits = {}
+            polling = data.get('polling') or {}
+            if not isinstance(polling, dict):
+                polling = {}
+            webhooks = data.get('webhooks') or {}
+            if not isinstance(webhooks, dict):
+                webhooks = {}
+            capabilities = data.get('capabilities') or {}
+            if not isinstance(capabilities, dict):
+                capabilities = {}
+            cdef = ConnectorDef(
+                name=name,
+                version=str(data.get('version', '1.0.0')),
+                description=data.get('description', ''),
+                category=data.get('category', ''),
+                provider=data.get('provider', ''),
+                module_name=module_name,
+                auth=ConnectorAuth(
+                    type=auth.get('type', 'none'),
+                    provider=auth.get('provider', ''),
+                    supported_scopes=auth.get('supported_scopes', []) or [],
+                    token_url=auth.get('token_url', ''),
+                    auth_url=auth.get('auth_url', ''),
+                    requires_refresh=bool(auth.get('requires_refresh', False)),
+                    credential_fields=auth.get('credential_fields', []) or [],
+                ),
+                rate_limits=ConnectorRateLimit(
+                    default=rate_limits.get('default', ''),
+                    rules=rate_limits.get('rules', {}) or {},
+                ),
+                retry_policy=data.get('retry_policy') or {},
+                timeouts=data.get('timeouts') or {},
+                polling=ConnectorPolling(
+                    enabled=bool(polling.get('enabled', False)),
+                    default_interval_seconds=int(
+                        polling.get('default_interval_seconds', 60)),
+                ),
+                webhooks=ConnectorWebhook(
+                    enabled=bool(webhooks.get('enabled', False)),
+                    events=webhooks.get('events', []) or [],
+                    secret_required=bool(webhooks.get('secret_required', False)),
+                ),
+                supported_events=data.get('supported_events', []) or [],
+                supported_objects=data.get('supported_objects', []) or [],
+                pagination=data.get('pagination') or {},
+                batching=data.get('batching') or {},
+                streaming=data.get('streaming') or {},
+                capabilities=ConnectorCapability(
+                    actions=bool(capabilities.get('actions', False)),
+                    triggers=bool(capabilities.get('triggers', False)),
+                    polling=bool(capabilities.get('polling', False)),
+                    webhooks=bool(capabilities.get('webhooks', False)),
+                    batching=bool(capabilities.get('batching', False)),
+                    streaming=bool(capabilities.get('streaming', False)),
+                    pagination=bool(capabilities.get('pagination', False)),
+                    file_upload=bool(capabilities.get('file_upload', False)),
+                    file_download=bool(capabilities.get('file_download', False)),
+                    long_running=bool(capabilities.get('long_running', False)),
+                ),
+                permissions=data.get('permissions') or {},
+                health_check=data.get('health_check') or {},
+                documentation=data.get('documentation') or {},
+                deprecation_policy=data.get('deprecation_policy') or {},
+                dependencies=data.get('dependencies', []) or [],
+            )
+            if isinstance(actions, dict):
+                for aname, adef in actions.items():
+                    if not isinstance(adef, dict):
+                        continue
+                    inputs = adef.get('inputs') or {}
+                    if not isinstance(inputs, dict):
+                        inputs = {str(i): 'string' for i in inputs}
+                    outputs = adef.get('outputs') or {}
+                    if not isinstance(outputs, dict):
+                        outputs = {str(o): 'any' for o in outputs}
+                    cdef.actions[aname] = ConnectorAction(
+                        name=aname,
+                        description=adef.get('description', ''),
+                        kind=adef.get('kind', 'run'),
+                        inputs=inputs,
+                        outputs=outputs,
+                        required_permissions=(
+                            adef.get('required_permissions', []) or []),
+                        idempotent=bool(adef.get('idempotent', False)),
+                        long_running=bool(adef.get('long_running', False)),
+                        streaming=bool(adef.get('streaming', False)),
+                    )
+            if isinstance(triggers, dict):
+                for tname, tdef in triggers.items():
+                    if not isinstance(tdef, dict):
+                        continue
+                    cdef.triggers[tname] = ConnectorTrigger(
+                        name=tname,
+                        description=tdef.get('description', ''),
+                        kind=tdef.get('kind', 'manual'),
+                        webhook=bool(tdef.get('webhook', False)),
+                        polling_interval_seconds=int(
+                            tdef.get('polling_interval_seconds', 60)),
+                        cron=tdef.get('cron', ''),
+                        supported_events=tdef.get('supported_events', []) or [],
+                    )
+            model.connectors[module_name] = cdef
+
+    def _load_ai_metadata(self, model: MetadataModel):
+        """Load AI planner metadata from metadata/ai/.
+
+        Combines planner.yaml (strategies, constraints, models),
+        providers.yaml, reasoning.yaml, constraints.yaml,
+        optimization.yaml (optimizer rules), memory.yaml, and
+        examples.yaml into a single PlannerDef consumed by the AI
+        planner generator.
+        """
+        ai_dir = self.metadata_dir / 'ai'
+        if not ai_dir.exists():
+            return
+        pdef = PlannerDef()
+
+        planner_file = ai_dir / 'planner.yaml'
+        data = self._load_yaml(planner_file)
+        if data:
+            planner = data.get('planner', data)
+            if isinstance(planner, dict):
+                if planner.get('name'):
+                    pdef.name = str(planner['name'])
+                if planner.get('description'):
+                    pdef.description = str(planner['description'])
+                strategies = planner.get('strategies')
+                if isinstance(strategies, list):
+                    pdef.strategies = [
+                        s if isinstance(s, str) else str(s)
+                        for s in strategies
+                    ]
+                models = planner.get('models')
+                if isinstance(models, dict):
+                    pdef.models.update(models)
+                constraints = planner.get('constraints')
+                if isinstance(constraints, dict):
+                    pdef.max_steps = int(constraints.get('max_steps', 50))
+                    pdef.max_depth = int(constraints.get('max_depth', 5))
+                    pdef.timeout_seconds = int(
+                        constraints.get('timeout_seconds', 30))
+                    for cname, cvalue in constraints.items():
+                        if cname in ('max_steps', 'max_depth', 'timeout_seconds'):
+                            continue
+                        pdef.constraints.append(PlanConstraintDef(
+                            name=str(cname),
+                            type='limit',
+                            description=str(cvalue),
+                            value=cvalue,
+                        ))
+
+        providers_file = ai_dir / 'providers.yaml'
+        pdata = self._load_yaml(providers_file)
+        if pdata:
+            providers = pdata.get('providers', pdata)
+            if isinstance(providers, dict):
+                pdef.providers.update(providers)
+
+        reasoning_file = ai_dir / 'reasoning.yaml'
+        rdata = self._load_yaml(reasoning_file)
+        if rdata:
+            reasoning = rdata.get('reasoning', rdata)
+            if isinstance(reasoning, dict):
+                pdef.reasoning.update(reasoning)
+
+        constraints_file = ai_dir / 'constraints.yaml'
+        cdata = self._load_yaml(constraints_file)
+        if cdata:
+            raw = cdata.get('constraints', cdata)
+            if isinstance(raw, dict):
+                for cname, cdef in raw.items():
+                    if isinstance(cdef, dict):
+                        pdef.constraints.append(PlanConstraintDef(
+                            name=str(cname),
+                            type=str(cdef.get('type', 'limit')),
+                            description=str(cdef.get('description', '')),
+                            value=cdef.get('value'),
+                        ))
+
+        optimization_file = ai_dir / 'optimization.yaml'
+        odata = self._load_yaml(optimization_file)
+        if odata:
+            opt_section = odata.get('optimization', odata)
+            rules = (opt_section.get('rules') if isinstance(opt_section, dict)
+                     else None) or odata.get('optimization_rules') or {}
+            if isinstance(rules, dict):
+                for rname, rdef in rules.items():
+                    if not isinstance(rdef, dict):
+                        continue
+                    pdef.optimization_rules.append(OptimizationRuleDef(
+                        name=str(rname),
+                        description=str(rdef.get('description', '')),
+                        enabled=bool(rdef.get('enabled', True)),
+                        priority=int(rdef.get('priority', 100)),
+                    ))
+            elif isinstance(rules, list):
+                for rdef in rules:
+                    if not isinstance(rdef, dict):
+                        continue
+                    pdef.optimization_rules.append(OptimizationRuleDef(
+                        name=str(rdef.get('name', '')),
+                        description=str(rdef.get('description', '')),
+                        enabled=bool(rdef.get('enabled', True)),
+                        priority=int(rdef.get('priority', 100)),
+                    ))
+            optimizer = odata.get('optimizer')
+            if isinstance(optimizer, dict) and optimizer.get('models'):
+                pdef.models.update(optimizer['models'])
+
+        memory_file = ai_dir / 'memory.yaml'
+        mdata = self._load_yaml(memory_file)
+        if mdata:
+            memory = mdata.get('memory', mdata)
+            if isinstance(memory, dict):
+                pdef.memory.update(memory)
+
+        examples_file = ai_dir / 'examples.yaml'
+        edata = self._load_yaml(examples_file)
+        if edata:
+            examples = edata.get('examples', [])
+            if isinstance(examples, list):
+                pdef.examples = examples
+            elif isinstance(examples, dict):
+                pdef.examples = list(examples.values())
+
+        model.planner = pdef
 
     def _load_yaml(self, path: pathlib.Path) -> Optional[dict]:
         """Load a YAML file. Falls back to JSON if yaml not available."""

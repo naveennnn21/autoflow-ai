@@ -1,0 +1,25 @@
+# AutoFlow AI - Organization domain events
+#
+# Organization lifecycle events.
+
+events:
+  organizations:
+    organization.created:
+      description: Organization created
+      version: 1
+      idempotent: true
+      payload:
+        - organization_id
+        - name
+        - owner_id
+    organization.updated:
+      description: Organization details updated
+      version: 1
+      payload:
+        - organization_id
+        - changed_fields
+    organization.deleted:
+      description: Organization deleted
+      version: 1
+      payload:
+        - organization_id

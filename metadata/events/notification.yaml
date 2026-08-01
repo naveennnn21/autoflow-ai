@@ -1,0 +1,21 @@
+# AutoFlow AI - Notification domain events
+#
+# Outbound notification lifecycle events.
+
+events:
+  notifications:
+    notification.sent:
+      description: Notification delivered to a user
+      version: 1
+      payload:
+        - notification_id
+        - user_id
+        - channel
+    notification.failed:
+      description: Notification delivery failed
+      version: 1
+      payload:
+        - notification_id
+        - user_id
+        - channel
+        - error

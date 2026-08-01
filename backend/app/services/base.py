@@ -4,8 +4,6 @@ import asyncio
 import functools
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, Type, TypeVar
 
 from cachetools import TTLCache
@@ -62,53 +60,6 @@ def retry(max_attempts: int = 3, base_delay: float = 0.5, max_delay: float = 10.
             raise last_exc
         return wrapper
     return decorator
-
-
-# ---------------------------------------------------------------------------
-# Domain Events
-# ---------------------------------------------------------------------------
-
-@dataclass
-class BaseEvent:
-    """Base domain event."""
-    event_type: str
-    entity_id: Any = None
-    entity_type: str = ""
-    data: dict = field(default_factory=dict)
-    actor_id: Any = None
-    organization_id: Any = None
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-
-
-class EventBus:
-    """Simple in-memory event bus for publishing domain events.
-
-    Handlers are registered by event type and invoked asynchronously.
-    """
-
-    _handlers: Dict[str, List[Callable]] = {
-        "_default": [],
-    }
-
-    @classmethod
-    def register(cls, event_type: str, handler: Callable):
-        """Register a handler for an event type."""
-        if event_type not in cls._handlers:
-            cls._handlers[event_type] = []
-        cls._handlers[event_type].append(handler)
-
-    @classmethod
-    async def publish(cls, event: BaseEvent):
-        """Publish an event to all registered handlers."""
-        handlers = cls._handlers.get(event.event_type, []) + cls._handlers.get("_default", [])
-        for handler in handlers:
-            try:
-                if asyncio.iscoroutinefunction(handler):
-                    await handler(event)
-                else:
-                    handler(event)
-            except Exception:
-                logger.exception(f"Event handler failed for {event.event_type}")
 
 
 # ---------------------------------------------------------------------------
@@ -273,20 +224,30 @@ class BaseService(IService[ModelType, DTOType]):
             except Exception:
                 pass
 
-    # --- Event publishing ---
+    # --- Event publishing (metadata-driven app.events bus) ---
 
     async def _publish_event(self, event_type: str, entity_id: Any = None,
                              data: dict = None, actor_id: Any = None,
                              organization_id: Any = None):
-        event = BaseEvent(
-            event_type=event_type,
-            entity_id=entity_id,
-            entity_type=self.repository.model_class.__name__,
-            data=data or {},
-            actor_id=actor_id,
-            organization_id=organization_id,
-        )
-        await EventBus.publish(event)
+        """Publish a domain event on the platform event bus.
+
+        Migrated from the legacy in-module EventBus to the generated
+        metadata-driven bus (app.events). Payload, entity, actor and
+        organization identifiers are carried on the event envelope.
+        """
+        try:
+            from app.events import Event, publish
+            event = Event(
+                event_type=event_type,
+                payload=data or {},
+                entity_id=str(entity_id) if entity_id is not None else None,
+                entity_type=self.repository.model_class.__name__,
+                actor_id=str(actor_id) if actor_id is not None else None,
+                organization_id=str(organization_id) if organization_id is not None else None,
+            )
+            await publish(event)
+        except Exception:
+            logger.exception("Event publish failed for %s", event_type)
 
     # --- CRUD operations ---
 

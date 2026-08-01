@@ -1,0 +1,176 @@
+name: GitLab
+version: 1.0.0
+description: GitLab repositories, issues, and merge requests
+category: developer
+provider: gitlab
+module_name: gitlab
+authentication:
+  type: oauth2
+  provider: gitlab
+  supported_scopes:
+    - api
+    - read_repository
+  auth_url: https://gitlab.com/oauth/authorize
+  token_url: https://gitlab.com/oauth/token
+  requires_refresh: true
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - refresh_token
+actions:
+  create_issue:
+    description: Create an issue in a project
+    kind: create
+    inputs:
+      project_id: string
+      title: string
+      description: text
+      labels: list
+    outputs:
+      issue_iid: integer
+      issue_url: string
+    required_permissions:
+      - api
+    idempotent: false
+  list_issues:
+    description: List project issues
+    kind: list
+    inputs:
+      project_id: string
+      state: string
+      per_page: integer
+    outputs:
+      issues: list
+    required_permissions:
+      - api
+  create_merge_request:
+    description: Open a merge request
+    kind: create
+    inputs:
+      project_id: string
+      source_branch: string
+      target_branch: string
+      title: string
+      description: text
+    outputs:
+      mr_iid: integer
+      mr_url: string
+    required_permissions:
+      - api
+    idempotent: false
+  get_project:
+    description: Fetch project metadata
+    kind: read
+    inputs:
+      project_id: string
+    outputs:
+      project: object
+    required_permissions:
+      - api
+  list_pipelines:
+    description: List CI pipelines
+    kind: list
+    inputs:
+      project_id: string
+      per_page: integer
+    outputs:
+      pipelines: list
+    required_permissions:
+      - api
+triggers:
+  push:
+    description: Triggered on push events
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - gitlab.push
+  merge_request:
+    description: Triggered on merge request events
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - gitlab.merge_request
+  pipeline:
+    description: Triggered when a pipeline status changes
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - gitlab.pipeline
+rate_limits:
+  default: 600/hour
+  rules:
+    list_issues: 60/minute
+    create_issue: 60/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 120
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: true
+  events:
+    - gitlab.push
+    - gitlab.merge_request
+    - gitlab.pipeline
+  secret_required: true
+supported_events:
+  - gitlab.push
+  - gitlab.merge_request
+  - gitlab.pipeline
+supported_objects:
+  - project
+  - issue
+  - merge_request
+  - pipeline
+pagination:
+  enabled: true
+  default_page_size: 20
+  max_page_size: 100
+  cursor_field: page
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: true
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: true
+  long_running: false
+permissions:
+  read:
+    - read_repository
+  write:
+    - api
+health_check:
+  endpoint: https://gitlab.com/api/v4/projects
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://docs.gitlab.com/api
+  setup_guide: Create an OAuth application in GitLab and configure the api scope.
+  example_prompt: Create a GitLab issue for feature requests
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

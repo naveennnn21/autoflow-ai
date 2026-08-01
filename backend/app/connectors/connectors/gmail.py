@@ -1,0 +1,39 @@
+"""AutoFlow AI - Gmail connector (generated from metadata)."""
+
+from typing import Any, Dict, List, Optional
+
+from app.connectors.base import BaseConnector
+from app.connectors.models import ActionResponse, TriggerEvent
+
+
+CONNECTOR_METADATA = {'name': 'Gmail', 'version': '1.0.0', 'description': 'Google Gmail email integration', 'category': 'email', 'provider': 'google', 'module_name': 'gmail', 'authentication': {'type': 'oauth2', 'provider': 'google', 'supported_scopes': ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify'], 'token_url': 'https://oauth2.googleapis.com/token', 'auth_url': 'https://accounts.google.com/o/oauth2/v2/auth', 'requires_refresh': True, 'credential_fields': ['client_id', 'client_secret', 'access_token', 'refresh_token']}, 'actions': {'send_email': {'description': 'Send an email message', 'kind': 'create', 'inputs': {'to': 'string', 'cc': 'string', 'bcc': 'string', 'subject': 'string', 'body': 'text', 'thread_id': 'string'}, 'outputs': {'message_id': 'string', 'thread_id': 'string'}, 'required_permissions': ['gmail.send'], 'idempotent': True, 'long_running': False, 'streaming': False}, 'search_emails': {'description': 'Search emails by query', 'kind': 'search', 'inputs': {'query': 'string', 'max_results': 'integer'}, 'outputs': {'messages': 'list'}, 'required_permissions': ['gmail.readonly'], 'idempotent': False, 'long_running': False, 'streaming': False}, 'create_draft': {'description': 'Create an email draft', 'kind': 'create', 'inputs': {'to': 'string', 'subject': 'string', 'body': 'text'}, 'outputs': {'draft_id': 'string'}, 'required_permissions': ['gmail.compose'], 'idempotent': False, 'long_running': False, 'streaming': False}, 'get_email': {'description': 'Fetch a single email by id', 'kind': 'read', 'inputs': {'message_id': 'string', 'format': 'string'}, 'outputs': {'email': 'object'}, 'required_permissions': ['gmail.readonly'], 'idempotent': False, 'long_running': False, 'streaming': False}, 'modify_labels': {'description': 'Add or remove labels on a message', 'kind': 'update', 'inputs': {'message_id': 'string', 'add_label_ids': 'list', 'remove_label_ids': 'list'}, 'outputs': {'labels': 'list'}, 'required_permissions': ['gmail.modify'], 'idempotent': False, 'long_running': False, 'streaming': False}}, 'triggers': {'new_email': {'description': 'Triggered when a new email arrives', 'kind': 'polling', 'webhook': False, 'polling_interval_seconds': 60, 'cron': '', 'supported_events': ['email.received']}, 'email_label': {'description': 'Triggered when an email is labeled', 'kind': 'polling', 'webhook': False, 'polling_interval_seconds': 60, 'cron': '', 'supported_events': ['email.labeled']}}, 'rate_limits': {'default': '250/hour', 'rules': {'send_email': '100/hour', 'search_emails': '500/hour'}}, 'retry_policy': {'max_attempts': 3, 'base_delay': 1.0, 'max_delay': 60.0, 'backoff_factor': 2.0}, 'timeouts': {'connect': 10, 'read': 30, 'write': 30, 'execute': 60}, 'polling': {'enabled': True, 'default_interval_seconds': 60}, 'webhooks': {'enabled': False, 'events': ['email.received'], 'secret_required': False}, 'supported_events': ['email.received', 'email.sent', 'email.labeled'], 'supported_objects': ['email', 'draft', 'label'], 'pagination': {'enabled': True, 'default_page_size': 50, 'max_page_size': 500, 'cursor_field': 'nextPageToken'}, 'batching': {'enabled': False, 'max_batch_size': 100}, 'streaming': {'enabled': False}, 'capabilities': {'actions': True, 'triggers': True, 'polling': True, 'webhooks': False, 'batching': False, 'streaming': False, 'pagination': True, 'file_upload': True, 'file_download': True, 'long_running': False}, 'permissions': {'read': ['gmail.readonly'], 'write': ['gmail.send', 'gmail.modify', 'gmail.compose']}, 'health_check': {'endpoint': 'https://gmail.googleapis.com/gmail/v1/users/me/profile', 'method': 'GET', 'timeout_seconds': 10}, 'documentation': {'url': 'https://developers.google.com/gmail/api', 'setup_guide': 'Create a Google Cloud project, enable the Gmail API, and add OAuth client credentials.', 'example_prompt': 'Send a welcome email to a new signup'}, 'deprecation_policy': {'deprecated': False, 'sunset_date': None, 'recommended_version': '1.0.0'}, 'dependencies': ['requests']}
+
+
+class GmailConnector(BaseConnector):
+    """Gmail (google) connector implementation."""
+
+    name = "Gmail"
+    version = "1.0.0"
+    metadata = CONNECTOR_METADATA
+
+    def execute_action(self, action: str, inputs: Dict[str, Any],
+                       context: Optional[dict] = None) -> ActionResponse:
+        """Execute an action against the provider API."""
+        action_def = self._check_action(action)
+        kind = action_def.get("kind", "run")
+        try:
+            method, path = self._endpoint_for(action, inputs or {})
+            response = self._transport_request(
+                method, path, json_body=dict(inputs or {}))
+            data = response if isinstance(response, dict) else {"result": response}
+            return ActionResponse(ok=True, data=data,
+                                  connector=self.name, action=action)
+        except Exception as exc:  # noqa: BLE001 - converted to response
+            return ActionResponse(ok=False, error=str(exc),
+                                  status_code=500,
+                                  connector=self.name, action=action)
+
+    def poll(self, trigger: str,
+             context: Optional[dict] = None) -> List[TriggerEvent]:
+        """Collect new polling events (provider-specific fetch)."""
+        return super().poll(trigger, context=context)

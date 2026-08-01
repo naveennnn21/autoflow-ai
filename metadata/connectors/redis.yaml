@@ -1,0 +1,172 @@
+name: Redis
+version: 1.0.0
+description: Redis in-memory data store connector
+category: database
+provider: redis
+module_name: redis
+authentication:
+  type: basic
+  provider: redis
+  supported_scopes:
+    - read
+    - write
+  auth_url: ""
+  token_url: ""
+  requires_refresh: false
+  credential_fields:
+    - host
+    - port
+    - password
+    - db
+actions:
+  get:
+    description: Fetch a value by key
+    kind: read
+    inputs:
+      key: string
+    outputs:
+      value: string
+    required_permissions:
+      - read
+    idempotent: true
+  set:
+    description: Set a key to a value
+    kind: create
+    inputs:
+      key: string
+      value: string
+      ttl_seconds: integer
+    outputs:
+      ok: boolean
+    required_permissions:
+      - write
+    idempotent: true
+  delete:
+    description: Delete one or more keys
+    kind: delete
+    inputs:
+      keys: list
+    outputs:
+      deleted: integer
+    required_permissions:
+      - write
+    idempotent: true
+  publish:
+    description: Publish a message to a channel
+    kind: run
+    inputs:
+      channel: string
+      message: string
+    outputs:
+      subscribers: integer
+    required_permissions:
+      - write
+    idempotent: false
+  hset:
+    description: Set a field in a hash
+    kind: update
+    inputs:
+      key: string
+      field: string
+      value: string
+    outputs:
+      ok: boolean
+    required_permissions:
+      - write
+    idempotent: true
+  hget:
+    description: Fetch a field from a hash
+    kind: read
+    inputs:
+      key: string
+      field: string
+    outputs:
+      value: string
+    required_permissions:
+      - read
+    idempotent: true
+triggers:
+  channel_message:
+    description: Triggered when a message is published to a channel
+    kind: system
+    webhook: false
+    polling_interval_seconds: 0
+    supported_events:
+      - redis.channel_message
+  key_expired:
+    description: Triggered when a key expires
+    kind: system
+    webhook: false
+    polling_interval_seconds: 0
+    supported_events:
+      - redis.key_expired
+rate_limits:
+  default: 10000/minute
+  rules:
+    get: 1000/minute
+    set: 1000/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 0.5
+  max_delay: 30.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 10
+  write: 10
+  execute: 30
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: false
+  events: []
+  secret_required: false
+supported_events:
+  - redis.channel_message
+  - redis.key_expired
+supported_objects:
+  - key
+  - hash
+  - list
+  - channel
+pagination:
+  enabled: false
+  default_page_size: 100
+  max_page_size: 1000
+  cursor_field: cursor
+batching:
+  enabled: true
+  max_batch_size: 1000
+streaming:
+  enabled: true
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: false
+  batching: true
+  streaming: true
+  pagination: false
+  file_upload: false
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - read
+  write:
+    - write
+health_check:
+  endpoint: ""
+  method: PING
+  timeout_seconds: 5
+documentation:
+  url: https://redis.io/docs
+  setup_guide: Provide host, port, optional password, and database index.
+  example_prompt: Cache the latest product prices in Redis
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - redis

@@ -181,16 +181,19 @@ class TestTemplateService:
     # --- Event publishing tests ---
 
     async def test_event_published_on_create(self, service, mock_repository):
-        """Test event published for create."""
-        from app.services.base import EventBus, BaseEvent
+        """Test event published for create on the platform event bus."""
+        from app.events import subscribe, unsubscribe
         mock_obj = MagicMock(spec=Template)
         mock_obj.id = uuid.uuid4()
         mock_repository.create.return_value = mock_obj
         events = []
         async def collector(event): events.append(event)
-        EventBus.register("Template.Created", collector)
-        await service.create(TemplateCreate())
-        assert len(events) > 0, "No events were published"
+        subscribe("Template.Created", collector)
+        try:
+            await service.create(TemplateCreate())
+            assert len(events) > 0, "No events were published"
+        finally:
+            unsubscribe("Template.Created", collector)
 
 
     # --- Retry behavior tests ---

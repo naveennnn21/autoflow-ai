@@ -1,0 +1,170 @@
+name: Jira
+version: 1.0.0
+description: Jira issue tracking and project management
+category: productivity
+provider: atlassian
+module_name: jira
+authentication:
+  type: oauth2
+  provider: atlassian
+  supported_scopes:
+    - read:jira-user
+    - read:jira-work
+    - write:jira-work
+    - offline_access
+  auth_url: https://auth.atlassian.com/authorize
+  token_url: https://auth.atlassian.com/oauth/token
+  requires_refresh: true
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - refresh_token
+actions:
+  create_issue:
+    description: Create a Jira issue
+    kind: create
+    inputs:
+      project_key: string
+      summary: string
+      description: text
+      issue_type: string
+      assignee: string
+      priority: string
+    outputs:
+      issue_key: string
+      issue_id: string
+      issue_url: string
+    required_permissions:
+      - write:jira-work
+    idempotent: false
+  update_issue:
+    description: Update a Jira issue
+    kind: update
+    inputs:
+      issue_key: string
+      summary: string
+      description: text
+      status: string
+      assignee: string
+    outputs:
+      issue_key: string
+    required_permissions:
+      - write:jira-work
+  search_issues:
+    description: Search issues with JQL
+    kind: search
+    inputs:
+      jql: string
+      max_results: integer
+      fields: list
+    outputs:
+      issues: list
+    required_permissions:
+      - read:jira-work
+  get_issue:
+    description: Fetch a single issue
+    kind: read
+    inputs:
+      issue_key: string
+    outputs:
+      issue: object
+    required_permissions:
+      - read:jira-work
+  transition_issue:
+    description: Move an issue to a workflow status
+    kind: update
+    inputs:
+      issue_key: string
+      transition_name: string
+    outputs:
+      status: string
+    required_permissions:
+      - write:jira-work
+triggers:
+  issue_created:
+    description: Triggered when an issue is created
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - jira.issue_created
+  issue_updated:
+    description: Triggered when an issue changes
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - jira.issue_updated
+rate_limits:
+  default: 500/minute
+  rules:
+    search_issues: 60/minute
+    create_issue: 60/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: true
+  events:
+    - jira.issue_created
+    - jira.issue_updated
+  secret_required: true
+supported_events:
+  - jira.issue_created
+  - jira.issue_updated
+supported_objects:
+  - issue
+  - project
+  - sprint
+  - comment
+pagination:
+  enabled: true
+  default_page_size: 50
+  max_page_size: 200
+  cursor_field: startAt
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: true
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: true
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - read:jira-work
+  write:
+    - write:jira-work
+health_check:
+  endpoint: https://{site}.atlassian.net/rest/api/3/myself
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://developer.atlassian.com/cloud/jira
+  setup_guide: Create a Jira Cloud app with OAuth 2.0 and add the Jira API scopes.
+  example_prompt: Create a Jira ticket for support requests
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

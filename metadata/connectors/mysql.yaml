@@ -1,0 +1,149 @@
+name: MySQL
+version: 1.0.0
+description: MySQL relational database connector
+category: database
+provider: mysql
+module_name: mysql
+authentication:
+  type: basic
+  provider: mysql
+  supported_scopes:
+    - read
+    - write
+  auth_url: ""
+  token_url: ""
+  requires_refresh: false
+  credential_fields:
+    - host
+    - port
+    - database
+    - username
+    - password
+actions:
+  execute_query:
+    description: Run a read-only SQL query
+    kind: run
+    inputs:
+      sql: text
+      parameters: json
+      limit: integer
+    outputs:
+      rows: list
+      row_count: integer
+    required_permissions:
+      - read
+    idempotent: true
+  execute_statement:
+    description: Run an arbitrary SQL statement
+    kind: run
+    inputs:
+      sql: text
+      parameters: json
+    outputs:
+      affected_rows: integer
+    required_permissions:
+      - write
+    idempotent: false
+  list_tables:
+    description: List tables in the database
+    kind: list
+    inputs:
+      schema: string
+    outputs:
+      tables: list
+    required_permissions:
+      - read
+  get_schema:
+    description: Fetch table schema
+    kind: read
+    inputs:
+      table: string
+      schema: string
+    outputs:
+      columns: list
+    required_permissions:
+      - read
+triggers:
+  row_inserted:
+    description: Triggered when a row is inserted
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 300
+    supported_events:
+      - mysql.row_inserted
+  row_updated:
+    description: Triggered when a row is updated
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 300
+    supported_events:
+      - mysql.row_updated
+rate_limits:
+  default: 600/minute
+  rules:
+    execute_query: 120/minute
+    execute_statement: 120/minute
+retry_policy:
+  max_attempts: 2
+  base_delay: 1.0
+  max_delay: 30.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: true
+  default_interval_seconds: 300
+webhooks:
+  enabled: false
+  events: []
+  secret_required: false
+supported_events:
+  - mysql.row_inserted
+  - mysql.row_updated
+supported_objects:
+  - table
+  - row
+  - schema
+pagination:
+  enabled: true
+  default_page_size: 100
+  max_page_size: 1000
+  cursor_field: offset
+batching:
+  enabled: true
+  max_batch_size: 1000
+streaming:
+  enabled: true
+capabilities:
+  actions: true
+  triggers: true
+  polling: true
+  webhooks: false
+  batching: true
+  streaming: true
+  pagination: true
+  file_upload: false
+  file_download: false
+  long_running: true
+permissions:
+  read:
+    - read
+  write:
+    - write
+health_check:
+  endpoint: ""
+  method: CONNECT
+  timeout_seconds: 10
+documentation:
+  url: https://dev.mysql.com/doc
+  setup_guide: Provide host, port, database, username, and password. Firewall must allow outbound access.
+  example_prompt: Look up a customer record in MySQL
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - pymysql

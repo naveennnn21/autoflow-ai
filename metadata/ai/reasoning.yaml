@@ -1,0 +1,104 @@
+reasoning:
+  default_strategy: structured
+  strategies:
+    - name: structured
+      description: Deterministic multi-stage pipeline (normalize, intent, entities, tasks, plan)
+      steps:
+        - normalize
+        - intent
+        - entities
+        - tasks
+        - connectors
+        - capabilities
+        - constraints
+        - graph
+        - validate
+        - optimize
+        - specify
+      fallback: fast
+    - name: fast
+      description: Reduced pipeline for simple single-action prompts
+      steps:
+        - normalize
+        - intent
+        - entities
+        - connectors
+        - specify
+      fallback: structured
+    - name: deep
+      description: Full pipeline with clarification loop for ambiguous prompts
+      steps:
+        - normalize
+        - intent
+        - entities
+        - tasks
+        - connectors
+        - capabilities
+        - constraints
+        - ambiguity
+        - clarification
+        - graph
+        - validate
+        - optimize
+        - specify
+      fallback: structured
+
+  step_types:
+    normalize:
+      description: Normalize raw prompt into canonical form
+      deterministic: true
+      llm_required: false
+    intent:
+      description: Classify the user intent from a fixed taxonomy
+      deterministic: true
+      llm_required: true
+    entities:
+      description: Extract entities (connectors, objects, parameters)
+      deterministic: true
+      llm_required: true
+    tasks:
+      description: Decompose intent into ordered tasks
+      deterministic: true
+      llm_required: true
+    connectors:
+      description: Discover candidate connectors from the registry
+      deterministic: true
+      llm_required: false
+    capabilities:
+      description: Match tasks to connector capabilities
+      deterministic: true
+      llm_required: false
+    constraints:
+      description: Solve dependency and parameter constraints
+      deterministic: true
+      llm_required: false
+    ambiguity:
+      description: Detect ambiguous or missing planning inputs
+      deterministic: true
+      llm_required: false
+    clarification:
+      description: Generate clarification questions
+      deterministic: true
+      llm_required: true
+    graph:
+      description: Build the workflow DAG from ordered steps
+      deterministic: true
+      llm_required: false
+    validate:
+      description: Validate the plan against schemas and invariants
+      deterministic: true
+      llm_required: false
+    optimize:
+      description: Apply optimization rules to the plan
+      deterministic: true
+      llm_required: false
+    specify:
+      description: Emit the final WorkflowPlan specification
+      deterministic: true
+      llm_required: false
+
+  max_llm_calls_per_plan: 6
+  confidence:
+    threshold_high: 0.8
+    threshold_low: 0.5
+    clarify_below: 0.5

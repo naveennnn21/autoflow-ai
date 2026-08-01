@@ -1,49 +1,39 @@
+# AutoFlow AI - Platform events (billing + AI)
+#
+# Domain event definitions (workflow, user, organization, connector,
+# notification, system) live in their own domain files under
+# metadata/events/. This file keeps the cross-cutting platform events.
+# The Event Bus Generator merges every file in this directory.
+
 events:
-  workflow:
-    workflow.started:
-      description: Workflow execution started
-      payload:
-        - workflow_id
-        - execution_id
-        - triggered_by
-        - timestamp
-    workflow.completed:
-      description: Workflow execution completed
-      payload:
-        - workflow_id
-        - execution_id
-        - duration_ms
-        - cost
-        - timestamp
-    workflow.failed:
-      description: Workflow execution failed
-      payload:
-        - workflow_id
-        - execution_id
-        - error
-        - retry_attempt
-        - timestamp
-    execution.retried:
-      description: Failed execution being retried
-      payload:
-        - workflow_id
-        - execution_id
-        - attempt
-        - max_attempts
   billing:
     invoice.paid:
       description: Invoice payment received
+      version: 1
+      idempotent: true
     subscription.cancelled:
       description: Subscription cancelled
-  connectors:
-    connector.connected:
-      description: New connector integration activated
-    connector.disconnected:
-      description: Connector integration deactivated
-    connector.error:
-      description: Connector integration error
+      version: 1
   ai:
     ai.workflow_generated:
       description: AI generated a new workflow
+      version: 1
     ai.workflow_optimized:
       description: AI optimized an existing workflow
+      version: 1
+  connectors:
+    connector.action_executed:
+      description: Connector action executed (success or failure)
+      version: 1
+      payload:
+        - connector
+        - action
+        - ok
+        - duration_ms
+    connector.trigger_fired:
+      description: Connector trigger produced events
+      version: 1
+      payload:
+        - connector
+        - trigger
+        - event_count

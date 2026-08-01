@@ -1,36 +1,208 @@
 name: Stripe
 version: 1.0.0
 description: Stripe payment processing integration
-auth:
+category: payments
+provider: stripe
+module_name: stripe
+authentication:
   type: api_key
   provider: stripe
-  scopes:
+  supported_scopes:
     - payment_intent
     - subscription
     - invoice
+    - customer
+    - refund
+  auth_url: ""
+  token_url: ""
+  requires_refresh: false
+  credential_fields:
+    - secret_key
+    - publishable_key
+    - webhook_secret
+actions:
+  create_payment:
+    description: Create a payment intent
+    kind: create
+    inputs:
+      amount: integer
+      currency: string
+      description: string
+      customer_id: string
+      payment_method_id: string
+      metadata: json
+    outputs:
+      payment_intent_id: string
+      client_secret: string
+      status: string
+    required_permissions:
+      - payment_intent
+    idempotent: true
+  create_subscription:
+    description: Create a subscription
+    kind: create
+    inputs:
+      customer_id: string
+      price_id: string
+      trial_period_days: integer
+      metadata: json
+    outputs:
+      subscription_id: string
+      status: string
+    required_permissions:
+      - subscription
+    idempotent: false
+  create_invoice:
+    description: Create an invoice
+    kind: create
+    inputs:
+      customer_id: string
+      description: string
+      metadata: json
+    outputs:
+      invoice_id: string
+      status: string
+    required_permissions:
+      - invoice
+    idempotent: false
+  refund_payment:
+    description: Refund a payment
+    kind: create
+    inputs:
+      payment_intent_id: string
+      amount: integer
+      reason: string
+    outputs:
+      refund_id: string
+      status: string
+    required_permissions:
+      - refund
+    idempotent: true
+  list_customers:
+    description: List customers
+    kind: list
+    inputs:
+      limit: integer
+      email: string
+    outputs:
+      customers: list
+    required_permissions:
+      - customer
+  get_customer:
+    description: Fetch a customer
+    kind: read
+    inputs:
+      customer_id: string
+    outputs:
+      customer: object
+    required_permissions:
+      - customer
 triggers:
   payment_succeeded:
     description: Payment completed successfully
+    kind: webhook
     webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - stripe.payment_intent.succeeded
   payment_failed:
     description: Payment failed
+    kind: webhook
     webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - stripe.payment_intent.payment_failed
   subscription_updated:
     description: Subscription status changed
+    kind: webhook
     webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - stripe.customer.subscription.updated
   invoice_paid:
     description: Invoice paid
+    kind: webhook
     webhook: true
-actions:
-  create_payment:
-    description: Create payment intent
-    inputs:
-      - amount: integer
-      - currency: string
-      - description: string
-  create_subscription:
-    description: Create new subscription
-  create_invoice:
-    description: Generate invoice
-  refund_payment:
-    description: Process refund
+    polling_interval_seconds: 0
+    supported_events:
+      - stripe.invoice.paid
+rate_limits:
+  default: 100/second
+  rules:
+    create_payment: 25/second
+    list_customers: 25/second
+retry_policy:
+  max_attempts: 4
+  base_delay: 0.5
+  max_delay: 30.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: true
+  events:
+    - stripe.payment_intent.succeeded
+    - stripe.payment_intent.payment_failed
+    - stripe.customer.subscription.updated
+    - stripe.invoice.paid
+  secret_required: true
+supported_events:
+  - stripe.payment_intent.succeeded
+  - stripe.payment_intent.payment_failed
+  - stripe.customer.subscription.updated
+  - stripe.invoice.paid
+supported_objects:
+  - payment_intent
+  - subscription
+  - invoice
+  - customer
+  - refund
+pagination:
+  enabled: true
+  default_page_size: 10
+  max_page_size: 100
+  cursor_field: starting_after
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: true
+  batching: false
+  streaming: false
+  pagination: true
+  file_upload: false
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - customer
+  write:
+    - payment_intent
+    - subscription
+    - invoice
+    - refund
+health_check:
+  endpoint: https://api.stripe.com/v1/balance
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: https://docs.stripe.com/api
+  setup_guide: Get your Stripe secret key and configure the webhook signing secret.
+  example_prompt: Charge a customer for a subscription renewal
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - stripe

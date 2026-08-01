@@ -1,0 +1,114 @@
+name: Webhook
+version: 1.0.0
+description: Generic webhook receiver connector
+category: generic
+provider: http
+module_name: webhook
+authentication:
+  type: webhook_secret
+  provider: http
+  supported_scopes:
+    - receive
+  auth_url: ""
+  token_url: ""
+  requires_refresh: false
+  credential_fields:
+    - secret
+    - signing_header
+actions:
+  verify_signature:
+    description: Verify the webhook request signature
+    kind: run
+    inputs:
+      payload: json
+      signature: string
+      timestamp: string
+    outputs:
+      verified: boolean
+    required_permissions:
+      - receive
+    idempotent: true
+  transform_payload:
+    description: Transform an incoming webhook payload
+    kind: run
+    inputs:
+      payload: json
+      mapping: json
+    outputs:
+      transformed: json
+    required_permissions:
+      - receive
+    idempotent: true
+triggers:
+  webhook_received:
+    description: Triggered when the webhook fires
+    kind: webhook
+    webhook: true
+    polling_interval_seconds: 0
+    supported_events:
+      - webhook.received
+rate_limits:
+  default: 120/minute
+  rules:
+    verify_signature: 120/minute
+retry_policy:
+  max_attempts: 1
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 60
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: true
+  events:
+    - webhook.received
+  secret_required: true
+supported_events:
+  - webhook.received
+supported_objects:
+  - payload
+pagination:
+  enabled: false
+  default_page_size: 50
+  max_page_size: 1000
+  cursor_field: ""
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: false
+capabilities:
+  actions: true
+  triggers: true
+  polling: false
+  webhooks: true
+  batching: false
+  streaming: false
+  pagination: false
+  file_upload: false
+  file_download: false
+  long_running: false
+permissions:
+  read:
+    - receive
+  write:
+    - receive
+health_check:
+  endpoint: ""
+  method: GET
+  timeout_seconds: 10
+documentation:
+  url: ""
+  setup_guide: Register a webhook URL and configure the signing secret.
+  example_prompt: Receive and route webhook events
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies: []

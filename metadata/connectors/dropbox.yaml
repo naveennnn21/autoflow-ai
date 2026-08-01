@@ -1,0 +1,174 @@
+name: Dropbox
+version: 1.0.0
+description: Dropbox file storage integration
+category: storage
+provider: dropbox
+module_name: dropbox
+authentication:
+  type: oauth2
+  provider: dropbox
+  supported_scopes:
+    - files.metadata.write
+    - files.metadata.read
+    - files.content.write
+    - files.content.read
+    - account_info.read
+  auth_url: https://www.dropbox.com/oauth2/authorize
+  token_url: https://api.dropboxapi.com/oauth2/token
+  requires_refresh: true
+  credential_fields:
+    - client_id
+    - client_secret
+    - access_token
+    - refresh_token
+actions:
+  upload_file:
+    description: Upload a file to a Dropbox path
+    kind: upload
+    inputs:
+      path: string
+      content: string
+      mode: string
+      autorename: boolean
+    outputs:
+      file_id: string
+      revision: string
+    required_permissions:
+      - files.content.write
+    idempotent: false
+  download_file:
+    description: Download a file from Dropbox
+    kind: download
+    inputs:
+      path: string
+    outputs:
+      content: string
+      content_type: string
+    required_permissions:
+      - files.content.read
+  list_files:
+    description: List files in a folder
+    kind: list
+    inputs:
+      path: string
+      recursive: boolean
+      limit: integer
+    outputs:
+      entries: list
+    required_permissions:
+      - files.metadata.read
+  create_folder:
+    description: Create a folder
+    kind: create
+    inputs:
+      path: string
+    outputs:
+      folder_id: string
+    required_permissions:
+      - files.metadata.write
+  search_files:
+    description: Search for files by name
+    kind: search
+    inputs:
+      query: string
+      path: string
+      max_results: integer
+    outputs:
+      matches: list
+    required_permissions:
+      - files.metadata.read
+  delete_file:
+    description: Delete a file or folder
+    kind: delete
+    inputs:
+      path: string
+    outputs:
+      deleted: boolean
+    required_permissions:
+      - files.metadata.write
+triggers:
+  file_created:
+    description: Triggered when a file is created
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 60
+    supported_events:
+      - dropbox.file_created
+  file_modified:
+    description: Triggered when a file is modified
+    kind: polling
+    webhook: false
+    polling_interval_seconds: 60
+    supported_events:
+      - dropbox.file_modified
+rate_limits:
+  default: 240/minute
+  rules:
+    download_file: 120/minute
+    upload_file: 120/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 60
+  write: 60
+  execute: 120
+polling:
+  enabled: true
+  default_interval_seconds: 60
+webhooks:
+  enabled: false
+  events:
+    - dropbox.file_created
+  secret_required: false
+supported_events:
+  - dropbox.file_created
+  - dropbox.file_modified
+supported_objects:
+  - file
+  - folder
+pagination:
+  enabled: true
+  default_page_size: 100
+  max_page_size: 2000
+  cursor_field: cursor
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: true
+capabilities:
+  actions: true
+  triggers: true
+  polling: true
+  webhooks: false
+  batching: false
+  streaming: true
+  pagination: true
+  file_upload: true
+  file_download: true
+  long_running: true
+permissions:
+  read:
+    - files.metadata.read
+    - files.content.read
+  write:
+    - files.metadata.write
+    - files.content.write
+health_check:
+  endpoint: https://api.dropboxapi.com/2/users/get_current_account
+  method: POST
+  timeout_seconds: 10
+documentation:
+  url: https://developers.dropbox.com
+  setup_guide: Create a Dropbox app with the files scopes and OAuth credentials.
+  example_prompt: Back up the daily export to Dropbox
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - requests

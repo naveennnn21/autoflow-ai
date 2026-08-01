@@ -1,0 +1,44 @@
+optimization:
+  rules:
+    - name: merge_redundant_nodes
+      description: Merge adjacent nodes that perform the identical action on the same inputs
+      enabled: true
+      priority: 1
+    - name: parallelize_independent
+      description: Parallelize branches with no data dependencies
+      enabled: true
+      priority: 2
+    - name: reduce_connector_calls
+      description: Collapse consecutive calls to the same connector action where possible
+      enabled: true
+      priority: 3
+    - name: reuse_cached_outputs
+      description: Reuse cached outputs for identical action+inputs pairs
+      enabled: true
+      priority: 4
+    - name: estimate_cost
+      description: Estimate per-step and total execution cost
+      enabled: true
+      priority: 5
+    - name: estimate_latency
+      description: Estimate per-step and total execution latency
+      enabled: true
+      priority: 6
+    - name: estimate_retries
+      description: Estimate expected retries from connector retry policies
+      enabled: true
+      priority: 7
+    - name: prune_dead_branches
+      description: Remove unreachable branches from conditional graphs
+      enabled: true
+      priority: 8
+
+  cost:
+    currency: usd
+    default_action_cost: 0.0001
+    default_trigger_cost: 0.00005
+
+  latency:
+    default_action_ms: 250
+    default_trigger_ms: 50
+    parallel_branch_ms: 0

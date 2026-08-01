@@ -1,0 +1,157 @@
+# AutoFlow AI - Middleware Stack (metadata-driven)
+#
+# The `middleware` mapping below is the single source of truth for the
+# middleware stack. Each entry configures:
+#
+#   enabled   - whether the middleware is registered (default: true)
+#   order     - execution priority; lower runs first (closer to the edge)
+#   kind      - `base` for generated custom middleware, `starlette` for
+#               Starlette built-ins (CORS, GZip)
+#   description - human readable purpose
+#   options   - keyword arguments passed to the middleware constructor
+#
+# The Middleware Generator emits `backend/app/middleware/*.py`, a manager
+# that registers the stack in the correct order, integration tests, and
+# documentation from this file. Nothing is hardcoded outside metadata.
+
+name: Default
+description: Production middleware stack for the AutoFlow AI platform.
+
+middleware:
+  request_id:
+    enabled: true
+    order: 10
+    kind: base
+    description: Assign and propagate a unique request id on every request.
+    options:
+      header_name: X-Request-ID
+
+  correlation_id:
+    enabled: true
+    order: 20
+    kind: base
+    description: Propagate and generate correlation ids for distributed tracing.
+    options:
+      header_name: X-Correlation-ID
+
+  health:
+    enabled: true
+    order: 30
+    kind: base
+    description: Short-circuit health check paths before heavier middleware.
+    options:
+      paths:
+        - /health
+        - /health/db
+
+  exception:
+    enabled: true
+    order: 40
+    kind: base
+    description: Global exception handler returning consistent JSON errors.
+    options:
+      expose_details: false
+
+  timing:
+    enabled: true
+    order: 50
+    kind: base
+    description: Measure request duration and expose the X-Response-Time header.
+    options:
+      header_name: X-Response-Time
+
+  logging:
+    enabled: true
+    order: 60
+    kind: base
+    description: Structured request logging via the stdlib logging module.
+    options:
+      log_headers: false
+
+  metrics:
+    enabled: true
+    order: 70
+    kind: base
+    description: In-memory request metrics (counters and latency histograms).
+    options:
+      snapshot_enabled: true
+
+  rate_limit:
+    enabled: true
+    order: 80
+    kind: base
+    description: Fixed-window rate limiting keyed by client ip and path.
+    options:
+      requests_per_minute: 120
+      exempt_paths:
+        - /health
+        - /docs
+        - /redoc
+        - /openapi.json
+
+  authentication:
+    enabled: true
+    order: 90
+    kind: base
+    description: Validate JWT bearer tokens and populate request.user state.
+    options:
+      auto_error: false
+      algorithm: HS256
+
+  authorization:
+    enabled: true
+    order: 100
+    kind: base
+    description: Enforce scope/role requirements recorded on request state.
+    options:
+      default_deny: false
+      public_paths:
+        - /health
+        - /docs
+        - /redoc
+        - /openapi.json
+
+  tenant:
+    enabled: true
+    order: 110
+    kind: base
+    description: Resolve organization context from headers/token and attach to request state.
+    options:
+      header_name: X-Organization-Id
+
+  audit:
+    enabled: true
+    order: 120
+    kind: base
+    description: Collect audit events for mutating requests.
+    options:
+      log_audit: true
+
+  security_headers:
+    enabled: true
+    order: 130
+    kind: base
+    description: Apply security hardening response headers.
+    options:
+      content_security_policy: default-src 'self'
+      frame_options: DENY
+      nosniff: true
+      hsts_max_age: 0
+
+  cors:
+    enabled: true
+    order: 140
+    kind: starlette
+    description: Cross-origin resource sharing from settings-driven origins.
+    options:
+      allow_credentials: true
+      allow_methods: ["*"]
+      allow_headers: ["*"]
+
+  compression:
+    enabled: true
+    order: 150
+    kind: starlette
+    description: GZip response compression.
+    options:
+      minimum_size: 1000

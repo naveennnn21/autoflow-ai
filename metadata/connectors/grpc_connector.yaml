@@ -1,0 +1,142 @@
+name: gRPC
+version: 1.0.0
+description: Generic gRPC service connector
+category: generic
+provider: grpc
+module_name: grpc_connector
+authentication:
+  type: none
+  provider: grpc
+  supported_scopes:
+    - read
+    - write
+  auth_url: ""
+  token_url: ""
+  requires_refresh: false
+  credential_fields:
+    - endpoint
+    - proto_path
+    - service_name
+    - api_key
+    - tls
+actions:
+  unary_call:
+    description: Invoke a unary gRPC method
+    kind: run
+    inputs:
+      method: string
+      request: json
+      metadata: json
+    outputs:
+      response: json
+    required_permissions:
+      - read
+    idempotent: true
+  server_stream:
+    description: Invoke a server-streaming gRPC method
+    kind: stream
+    inputs:
+      method: string
+      request: json
+      metadata: json
+    outputs:
+      responses: stream
+    required_permissions:
+      - read
+    idempotent: false
+    streaming: true
+  client_stream:
+    description: Invoke a client-streaming gRPC method
+    kind: stream
+    inputs:
+      method: string
+      requests: json
+      metadata: json
+    outputs:
+      response: json
+    required_permissions:
+      - write
+    idempotent: false
+    streaming: true
+  health_check:
+    description: Call the gRPC health service
+    kind: read
+    inputs:
+      service: string
+    outputs:
+      status: string
+    required_permissions:
+      - read
+    idempotent: true
+triggers:
+  manual:
+    description: Manual trigger
+    kind: manual
+    webhook: false
+    polling_interval_seconds: 0
+    supported_events: []
+rate_limits:
+  default: 120/minute
+  rules:
+    unary_call: 60/minute
+retry_policy:
+  max_attempts: 3
+  base_delay: 1.0
+  max_delay: 60.0
+  backoff_factor: 2.0
+timeouts:
+  connect: 10
+  read: 30
+  write: 30
+  execute: 120
+polling:
+  enabled: false
+  default_interval_seconds: 60
+webhooks:
+  enabled: false
+  events: []
+  secret_required: false
+supported_events: []
+supported_objects:
+  - service
+  - method
+pagination:
+  enabled: false
+  default_page_size: 50
+  max_page_size: 1000
+  cursor_field: ""
+batching:
+  enabled: false
+  max_batch_size: 100
+streaming:
+  enabled: true
+capabilities:
+  actions: true
+  triggers: false
+  polling: false
+  webhooks: false
+  batching: false
+  streaming: true
+  pagination: false
+  file_upload: false
+  file_download: false
+  long_running: true
+permissions:
+  read:
+    - read
+  write:
+    - write
+health_check:
+  endpoint: ""
+  method: GRPC
+  timeout_seconds: 10
+documentation:
+  url: https://grpc.io/docs
+  setup_guide: Provide the gRPC endpoint and compiled proto descriptor to call methods.
+  example_prompt: Call a gRPC service method
+deprecation_policy:
+  deprecated: false
+  sunset_date: null
+  recommended_version: "1.0.0"
+dependencies:
+  - grpcio

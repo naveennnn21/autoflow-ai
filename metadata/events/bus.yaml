@@ -1,0 +1,54 @@
+# AutoFlow AI - Event Bus configuration (metadata-driven)
+#
+# The `bus` section configures the generated event bus: serialization,
+# persistence, retry with exponential backoff, dead-lettering, and
+# versioning. The `handlers` section declares which generated handler
+# modules consume which event types; the Event Bus Generator emits
+# METADATA_SUBSCRIPTIONS in backend/app/events/registry.py from it.
+#
+# Event definitions (description, payload, version, idempotency) live in
+# metadata/events/platform_events.yaml.
+
+name: Default
+description: Production event bus configuration for the AutoFlow AI platform.
+
+bus:
+  serializer: json
+  persistence:
+    enabled: true
+    max_events: 10000
+    storage: memory
+  retry:
+    enabled: true
+    max_attempts: 3
+    base_delay: 0.5
+    max_delay: 10.0
+    backoff_factor: 2.0
+  dead_letter:
+    enabled: true
+    max_retries: 5
+  versioning:
+    enabled: true
+
+handlers:
+  workflow.started: [analytics, audit]
+  workflow.completed: [analytics, notification]
+  workflow.failed: [workflow, notification, analytics, audit]
+  execution.retried: [workflow, audit]
+  user.created: [analytics, audit]
+  user.updated: [analytics, audit]
+  user.deleted: [audit]
+  organization.created: [analytics, audit]
+  organization.updated: [analytics, audit]
+  organization.deleted: [audit]
+  notification.sent: [notification, analytics]
+  notification.failed: [notification, analytics]
+  system.health_ok: [analytics]
+  system.error: [notification, webhook, analytics]
+  invoice.paid: [notification, analytics, audit]
+  subscription.cancelled: [notification, audit]
+  connector.connected: [connector, analytics]
+  connector.disconnected: [connector, analytics]
+  connector.error: [connector, notification, webhook]
+  ai.workflow_generated: [analytics, audit]
+  ai.workflow_optimized: [analytics, audit]

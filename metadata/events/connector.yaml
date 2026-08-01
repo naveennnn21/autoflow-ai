@@ -1,0 +1,15 @@
+# AutoFlow AI - Connector domain events
+#
+# Connector integration lifecycle transitions (connect, disconnect, error).
+
+events:
+  connectors:
+    connector.connected:
+      description: New connector integration activated
+      version: 1
+    connector.disconnected:
+      description: Connector integration deactivated
+      version: 1
+    connector.error:
+      description: Connector integration error
+      version: 1
