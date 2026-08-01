@@ -24,6 +24,10 @@ class FieldDef:
     enum_values: Optional[List[str]] = None
     description: str = ''
     max_length: Optional[int] = None
+    # Explicit database column name (defaults to ``name``). Used to keep the
+    # DB column stable while exposing a safe Python attribute (e.g. SQLAlchemy
+    # reserves ``metadata`` on declarative classes).
+    column_name: Optional[str] = None
 
 
 @dataclass

@@ -5,6 +5,7 @@ SQLAlchemy 2.0 models with relationships, indexes, constraints, enums,
 UUID PKs, multi-tenancy, timestamps, and soft-delete.
 """
 
+import warnings
 from typing import Dict, List, Optional, Set
 
 from scripts.generators.common.intermediate_model import (
@@ -89,6 +90,66 @@ def _enum_imports_for_entity(entity: EntityDef, all_enums: Dict[str, tuple]) -> 
     return needed
 
 # ---------------------------------------------------------------------------
+# Reserved attribute names
+# SQLAlchemy 2.0 reserves these names on declarative model classes. A field
+# with one of these names is exposed via a safe Python attribute
+# (``extra_<name>``) while the database column keeps its original name.
+# ---------------------------------------------------------------------------
+
+RESERVED_ORM_ATTRS = {'metadata', 'registry'}
+
+
+def _safe_attr_name(field: FieldDef, warn: bool = True) -> str:
+    """Return a safe Python attribute name for a mapped column.
+
+    Fields named ``metadata``/``registry`` are re-exposed as
+    ``extra_metadata``/``extra_registry``. The DB column name is preserved
+    by passing the original name explicitly to ``mapped_column()``.
+
+    Renames are deliberately loud (``warnings.warn``) so that adding a
+    reserved-named field to any future entity surfaces immediately during
+    generation instead of silently desyncing the hand-maintained schema
+    layer. The ``warn`` flag lets the collision guard probe attribute
+    names without double-reporting the same rename.
+    """
+    if field.name in RESERVED_ORM_ATTRS:
+        safe = f'extra_{field.name}'
+        if warn:
+            warnings.warn(
+                f"Field '{field.name}' is a reserved SQLAlchemy declarative "
+                f"attribute; re-exposing it as '{safe}' while preserving the "
+                f"'{field.name}' database column. Ensure the schema layer uses "
+                f"'{safe}'.",
+                stacklevel=2,
+            )
+        return safe
+    return field.name
+
+
+def _check_reserved_collisions(entity: EntityDef) -> None:
+    """Fail loudly if safe attribute names collide for an entity.
+
+    Guards the case where an entity declares both ``metadata`` and
+    ``extra_metadata`` (or ``registry`` and ``extra_registry``) - both would
+    otherwise collapse to the same mapped attribute at import time.
+    """
+    seen: Dict[str, str] = {}
+    for fname, field in entity.fields.items():
+        if field.primary_key:
+            continue
+        # warn=False: the rename warning is emitted by _field_to_column
+        # below; probing here must not double-report the same field.
+        safe = _safe_attr_name(field, warn=False)
+        if safe in seen:
+            raise ValueError(
+                f"Entity '{entity.name}': fields '{seen[safe]}' and '{fname}' "
+                f"both map to SQLAlchemy attribute '{safe}'. Rename one of "
+                f"them in the entity metadata."
+            )
+        seen[safe] = fname
+
+
+# ---------------------------------------------------------------------------
 # Column generation
 # Column default generation
 
@@ -168,24 +229,35 @@ def _fk_column_str(field: FieldDef, table_map: Dict[str, str]) -> str:
 
 
 def _field_to_column(field: FieldDef, table_map: Dict[str, str]) -> str:
-    """Convert a FieldDef to a SQLAlchemy column assignment."""
-    name = field.name
+    """Convert a FieldDef to a SQLAlchemy column assignment.
+
+    SQLAlchemy reserves ``metadata``/``registry`` as declarative attribute
+    names. Such fields are emitted with a safe attribute name
+    (``extra_metadata``) while the original name is preserved as the
+    database column via ``mapped_column("metadata", ...)``.
+    """
+    name = _safe_attr_name(field)
+    db_column = field.column_name or field.name
     default_str = _column_default(field)
 
+    # Column name prefix: "metadata", JSON ... (only when it differs)
+    col_prefix = f'"{db_column}", ' if db_column != name else ''
+
     if field.primary_key:
-        return f'    {name} = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)'
+        # Preserve the DB column name (col_prefix) even for the PK branch
+        return f'    {name} = mapped_column({col_prefix}UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)'
 
     if field.foreign_key:
         fk_part = _fk_column_str(field, table_map)
-        return f'    {name} = mapped_column({fk_part}{default_str})'
+        return f'    {name} = mapped_column({col_prefix}{fk_part}{default_str})'
 
     col_type = _column_type_str(field)
     opts = _column_options(field)
     if opts:
-        return f'    {name} = mapped_column({col_type}, {opts}{default_str})'
+        return f'    {name} = mapped_column({col_prefix}{col_type}, {opts}{default_str})'
     if default_str:
-        return f'    {name} = mapped_column({col_type}{default_str})'
-    return f'    {name} = mapped_column({col_type})'
+        return f'    {name} = mapped_column({col_prefix}{col_type}{default_str})'
+    return f'    {name} = mapped_column({col_prefix}{col_type})'
 
 
 # ---------------------------------------------------------------------------
@@ -352,6 +424,12 @@ def _build_file_content(entity: EntityDef, table_map: Dict[str, str],
                 lines.append(_field_to_column(fk_field, table_map))
                 auto_fk_names.add(fk_name)
     auto_fk_names.add('id')  # id is handled by uuid flag
+
+    # Guard against reserved-name renames collapsing into collisions.
+    # Raises before this entity's content is returned, so the writer never
+    # receives a broken file for it; entities generated earlier in the same
+    # run may already be written (fail-fast, not transactional).
+    _check_reserved_collisions(entity)
 
     # Regular columns (skipping auto-generated FK fields)
     for fname, field in entity.fields.items():

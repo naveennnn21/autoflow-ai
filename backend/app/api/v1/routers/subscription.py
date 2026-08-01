@@ -14,7 +14,7 @@ from app.repositories.subscription import SubscriptionRepository
 
 router = APIRouter(prefix="/subscription", tags=["Subscription"])
 
-@router.get("/")
+@router.get("")
 async def list_subscriptions(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_subscriptions(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=SubscriptionResponse, status_code=201,
+@router.post("", response_model=SubscriptionResponse, status_code=201,
          summary="Create Subscription", operation_id="create_subscription")
 async def create_subscription(
     data: SubscriptionCreate,

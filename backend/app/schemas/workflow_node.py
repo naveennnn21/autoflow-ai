@@ -2,17 +2,17 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from app.models.workflow_node import NodeType
+from app.models.workflow_node import WorkflowNodeType
 
 class WorkflowNodeCreate(BaseModel):
     workflow_id: str
-    type: NodeType
+    type: WorkflowNodeType
     label: str
 
 
 class WorkflowNodeUpdate(BaseModel):
     workflow_id: Optional[str] = None
-    type: Optional[NodeType] = None
+    type: Optional[WorkflowNodeType] = None
     label: Optional[str] = None
     position: Optional[int] = None
     config: Optional[dict] = None
@@ -29,7 +29,7 @@ class WorkflowNodeResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     workflow_id: str
-    type: NodeType
+    type: WorkflowNodeType
     label: str
     position: int
     config: dict
@@ -44,7 +44,7 @@ class WorkflowNodeResponse(BaseModel):
 class WorkflowNodePublic(BaseModel):
     id: str
     workflow_id: Optional[str] = None
-    type: Optional[NodeType] = None
+    type: Optional[WorkflowNodeType] = None
     label: Optional[str] = None
     position: Optional[int] = None
     config: Optional[dict] = None

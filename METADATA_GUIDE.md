@@ -163,6 +163,32 @@ print(v.summary())
 "
 ```
 
+## Reserved Attribute Names
+
+SQLAlchemy 2.0 reserves `metadata` and `registry` as declarative class
+attributes - a mapped column with one of those names raises
+`InvalidRequestError: Attribute name 'metadata' is reserved` at import time.
+
+To store such data, rename the field to a safe attribute and preserve the
+original database column with the `column:` key:
+
+```yaml
+fields:
+  extra_metadata:        # safe Python attribute on the model class
+    type: json
+    column: metadata     # DB column stays named 'metadata'
+```
+
+The models generator (`models_generator.py`) enforces this:
+
+- A field literally named `metadata`/`registry` is re-exposed as
+  `extra_metadata`/`extra_registry` (with a loud `warnings.warn`), keeping
+  the DB column name via `mapped_column("metadata", ...)`.
+- A `_check_reserved_collisions` guard raises if an entity declares both
+  `metadata` and `extra_metadata` (which would collapse to one attribute).
+- The Pydantic schema layer must mirror the safe attribute name - the
+  schemas generator's field tuples use `extra_metadata`, never `metadata`.
+
 ## Best Practices
 
 1. One entity per YAML file
@@ -173,3 +199,5 @@ print(v.summary())
 6. Define validation rules in service methods blocks
 7. Specify rate limits on API endpoints
 8. Always provide descriptions for entities, fields, and endpoints
+9. Never name a field `metadata` or `registry` - use the `column:` key (see
+   Reserved Attribute Names above)

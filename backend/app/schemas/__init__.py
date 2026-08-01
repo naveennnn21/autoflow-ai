@@ -9,7 +9,7 @@ from app.schemas.workflow_node import WorkflowNodeCreate, WorkflowNodeUpdate, Wo
 from app.schemas.execution import ExecutionCreate, ExecutionUpdate, ExecutionResponse, ExecutionPublic
 from app.schemas.execution_log import ExecutionLogCreate, ExecutionLogUpdate, ExecutionLogResponse
 from app.schemas.template import TemplateCreate, TemplateUpdate, TemplateResponse, TemplatePublic
-from app.schemas.marketplace import MarketplaceItemCreate, MarketplaceItemUpdate, MarketplaceItemResponse
+from app.schemas.marketplace_item import MarketplaceItemCreate, MarketplaceItemUpdate, MarketplaceItemResponse
 from app.schemas.notification import NotificationCreate, NotificationUpdate, NotificationResponse
 from app.schemas.audit_log import AuditLogCreate, AuditLogUpdate, AuditLogResponse
 from app.schemas.api_key import APIKeyCreate, APIKeyUpdate, APIKeyResponse

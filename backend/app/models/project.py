@@ -16,7 +16,7 @@ class Project(Base):
     name = mapped_column(String(255), nullable=False)
     description = mapped_column(Text)
     status = mapped_column(String(255))
-    metadata = mapped_column(JSON)
+    extra_metadata = mapped_column("metadata", JSON)
     organization_id = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

@@ -20,7 +20,7 @@ class Invoice(Base):
     description = mapped_column(Text)
     paid_at = mapped_column(DateTime(timezone=True))
     due_date = mapped_column(DateTime(timezone=True))
-    metadata = mapped_column(JSON)
+    extra_metadata = mapped_column("metadata", JSON)
     organization_id = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

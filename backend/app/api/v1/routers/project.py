@@ -14,7 +14,7 @@ from app.repositories.project import ProjectRepository
 
 router = APIRouter(prefix="/project", tags=["Project"])
 
-@router.get("/")
+@router.get("")
 async def list_projects(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_projects(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=ProjectResponse, status_code=201,
+@router.post("", response_model=ProjectResponse, status_code=201,
          summary="Create Project", operation_id="create_project")
 async def create_project(
     data: ProjectCreate,

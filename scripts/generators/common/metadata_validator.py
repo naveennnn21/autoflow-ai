@@ -195,15 +195,41 @@ class MetadataValidator:
             if not isinstance(data['fields'], dict):
                 self.errors.append(f"{rel}: 'fields' must be a mapping")
             else:
+                # Resolved DB column names (column: override or the field
+                # name itself) must be unique within the entity.
+                resolved_cols: Dict[str, str] = {}
                 for fname, fdef in data['fields'].items():
                     if not isinstance(fdef, dict):
                         self.errors.append(f"{rel}.{fname}: field definition must be a mapping")
+                        continue
+                    col = fdef.get('column')
+                    if col is not None:
+                        if not isinstance(col, str) or not col.strip():
+                            self.errors.append(
+                                f"{rel}.{fname}: 'column' must be a non-empty string")
+                        else:
+                            # Reserved ORM attributes are re-exposed by the
+                            # model layer (metadata -> extra_metadata); the
+                            # column override documents the DB name.
+                            resolved = col.strip()
+                            if resolved in resolved_cols:
+                                self.errors.append(
+                                    f"{rel}: '{resolved_cols[resolved]}' and '{fname}' "
+                                    f"both resolve to DB column '{resolved}'")
+                            else:
+                                resolved_cols[resolved] = fname
                     else:
-                        ftype = fdef.get('type')
-                        if ftype and ftype not in self.VALID_TYPES:
-                            # Could be enum; check if 'enum' key is present
-                            if 'enum' not in fdef:
-                                self.warnings.append(f"{rel}.{fname}: unknown type '{ftype}'")
+                        if fname in resolved_cols:
+                            self.errors.append(
+                                f"{rel}: '{resolved_cols[fname]}' and '{fname}' "
+                                f"both resolve to DB column '{fname}'")
+                        else:
+                            resolved_cols[fname] = fname
+                    ftype = fdef.get('type')
+                    if ftype and ftype not in self.VALID_TYPES:
+                        # Could be enum; check if 'enum' key is present
+                        if 'enum' not in fdef:
+                            self.warnings.append(f"{rel}.{fname}: unknown type '{ftype}'")
         if 'relationships' in data:
             if not isinstance(data['relationships'], dict):
                 self.errors.append(f"{rel}: 'relationships' must be a mapping")

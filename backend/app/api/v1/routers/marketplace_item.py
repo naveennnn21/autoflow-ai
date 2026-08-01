@@ -14,7 +14,7 @@ from app.repositories.marketplace_item import MarketplaceItemRepository
 
 router = APIRouter(prefix="/marketplace_item", tags=["MarketplaceItem"])
 
-@router.get("/")
+@router.get("")
 async def list_marketplace_items(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -48,7 +48,7 @@ async def search_marketplace_items(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=MarketplaceItemResponse, status_code=201,
+@router.post("", response_model=MarketplaceItemResponse, status_code=201,
          summary="Create MarketplaceItem", operation_id="create_marketplace_item")
 async def create_marketplace_item(
     data: MarketplaceItemCreate,

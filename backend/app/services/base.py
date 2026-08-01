@@ -4,7 +4,7 @@ import asyncio
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Callable, Generic, List, Optional, Tuple, Type, TypeVar
 
 from cachetools import TTLCache
 from pydantic import BaseModel

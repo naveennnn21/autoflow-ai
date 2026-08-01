@@ -31,12 +31,19 @@ def py_type(sql_type, enum_name=None):
 # ---------------------------------------------------------------------------
 # Schema field definitions as compact tuples
 # (field_name, sql_type, enum_name, is_required_for_create, is_sensitive)
+#
+# NOTE: attribute names here MUST mirror the SQLAlchemy model attribute
+# names produced by models_generator.py. Reserved ORM attribute names
+# (metadata/registry) are re-exposed by the model layer as
+# extra_metadata/extra_registry while the DB column keeps its original
+# name - so these tuples use extra_metadata, never metadata. See
+# models_generator._safe_attr_name / _check_reserved_collisions.
 # ---------------------------------------------------------------------------
 
 SCHEMAS = {}
 
 SCHEMAS['user'] = {
-    'enum_imports': {'UserRole': 'app.models.user', 'UserStatus': 'app.models.user'},
+    'enum_imports': {'UserStatus': 'app.models.user'},
     'fields': [
         ('email', 'String(255)', None, True, False),
         ('password_hash', 'String(255)', None, True, True),
@@ -89,7 +96,7 @@ SCHEMAS['project'] = {
         ('name', 'String(255)', None, True, False),
         ('description', 'Text', None, False, False),
         ('status', 'String(50)', None, False, False),
-        ('metadata', 'JSON', None, False, False),
+        ('extra_metadata', 'JSON', None, False, False),
         ('deleted_at', 'DateTime', None, False, False),
     ],
 }
@@ -109,10 +116,10 @@ SCHEMAS['workflow'] = {
 }
 
 SCHEMAS['workflow_node'] = {
-    'enum_imports': {'NodeType': 'app.models.workflow_node'},
+    'enum_imports': {'WorkflowNodeType': 'app.models.workflow_node'},
     'fields': [
         ('workflow_id', 'UUID', None, True, False),
-        ('type', 'Enum', 'NodeType', True, False),
+        ('type', 'Enum', 'WorkflowNodeType', True, False),
         ('label', 'String(255)', None, True, False),
         ('position', 'Integer', None, False, False),
         ('config', 'JSON', None, False, False),
@@ -221,7 +228,34 @@ SCHEMAS['api_key'] = {
         ('key_prefix', 'String(20)', None, True, False),
         ('scopes', 'JSON', None, False, False),
     ],
-    }
+}
+
+SCHEMAS['oauth_token'] = {
+    'enum_imports': {},
+    'fields': [
+        ('user_id', 'UUID', None, True, False),
+        ('provider', 'String(255)', None, True, False),
+        ('access_token', 'Text', None, True, True),
+        ('refresh_token', 'Text', None, False, True),
+        ('token_type', 'String(20)', None, False, False),
+        ('scope', 'String(255)', None, False, False),
+        ('expires_at', 'DateTime', None, False, False),
+    ],
+}
+
+SCHEMAS['subscription'] = {
+    'enum_imports': {},
+    'fields': [
+        ('organization_id', 'UUID', None, True, False),
+        ('plan_id', 'String(255)', None, True, False),
+        ('status', 'String(50)', None, False, False),
+        ('current_period_start', 'DateTime', None, True, False),
+        ('current_period_end', 'DateTime', None, True, False),
+        ('trial_end', 'DateTime', None, False, False),
+        ('cancelled_at', 'DateTime', None, False, False),
+        ('deleted_at', 'DateTime', None, False, False),
+    ],
+}
 
 SCHEMAS['invoice'] = {
     'enum_imports': {},
@@ -234,7 +268,7 @@ SCHEMAS['invoice'] = {
         ('description', 'Text', None, False, False),
         ('paid_at', 'DateTime', None, False, False),
         ('due_date', 'DateTime', None, False, False),
-        ('metadata', 'JSON', None, False, False),
+        ('extra_metadata', 'JSON', None, False, False),
     ],
 }
 
@@ -254,8 +288,18 @@ BASE_IMPORTS = J([
     'from pydantic import BaseModel, Field',
 ])
 
+# Acronym-aware class-name overrides so generated classes match the names
+# the routers, services, and tests import (e.g. api_key -> APIKey).
+KEY_TO_CLASS_OVERRIDES = {
+    'api_key': 'APIKey',
+    'oauth_token': 'OAuthToken',
+}
+
+
 def key_to_class(key):
     """Convert schema key to proper class name. Key 'team_member' -> 'TeamMember'."""
+    if key in KEY_TO_CLASS_OVERRIDES:
+        return KEY_TO_CLASS_OVERRIDES[key]
     return ''.join(w.capitalize() for w in key.split('_'))
 
 
@@ -335,7 +379,7 @@ SCHEMA_FILES = [
     ('execution.py', 'execution'),
     ('execution_log.py', 'execution_log'),
     ('template.py', 'template'),
-    ('marketplace.py', 'marketplace_item'),
+    ('marketplace_item.py', 'marketplace_item'),
     ('notification.py', 'notification'),
     ('audit_log.py', 'audit_log'),
     ('api_key.py', 'api_key'),
@@ -393,7 +437,7 @@ INIT_IMPORTS = [
     'from app.schemas.execution import ExecutionCreate, ExecutionUpdate, ExecutionResponse, ExecutionPublic',
     'from app.schemas.execution_log import ExecutionLogCreate, ExecutionLogUpdate, ExecutionLogResponse',
     'from app.schemas.template import TemplateCreate, TemplateUpdate, TemplateResponse, TemplatePublic',
-    'from app.schemas.marketplace import MarketplaceItemCreate, MarketplaceItemUpdate, MarketplaceItemResponse',
+    'from app.schemas.marketplace_item import MarketplaceItemCreate, MarketplaceItemUpdate, MarketplaceItemResponse',
     'from app.schemas.notification import NotificationCreate, NotificationUpdate, NotificationResponse',
     'from app.schemas.audit_log import AuditLogCreate, AuditLogUpdate, AuditLogResponse',
     'from app.schemas.api_key import APIKeyCreate, APIKeyUpdate, APIKeyResponse',

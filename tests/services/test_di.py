@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock
-from app.services.di import get_service, SERVICE_REGISTRY
+from app.services.di import SERVICE_REGISTRY
 
 
 class TestDI:

@@ -9,10 +9,16 @@ from scripts.generators.common.writer import FileWriter
 
 
 def _to_snake(name):
+    """Convert PascalCase to snake_case, handling acronyms.
+
+    OAuthToken -> oauth_token, APIKey -> api_key, OrganizationMember ->
+    organization_member. Matches the models/repositories/services generators
+    so routers import the same module names.
+    """
     import re
-    name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)
-    name = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', name)
-    return name.lower()
+    s1 = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', name)
+    s2 = re.sub(r'([A-Z]{2,})([A-Z][a-z])', r'\1_\2', s1)
+    return s2.lower()
 
 EXCLUDE = {"OrganizationMember","TeamMember","ExecutionLog"}
 
@@ -58,7 +64,11 @@ def _build_entity_router(entity):
     out.append(f'router = APIRouter(prefix="{route}", tags=["{en}"])')
     out.append('')
     # ========== LIST ==========
-    out.append('@router.get("/")')
+    # Root route uses '' (not '/') so clients hitting /api/v1/<entity>
+    # (no trailing slash) match directly instead of receiving a 307
+    # redirect to the slash form. Requests WITH a trailing slash are
+    # redirected to the canonical non-slash form - intentional.
+    out.append('@router.get("")')
     out.append(f'async def list_{sname}s(')
     out.append('    page: int = Query(1, ge=1, description="Page number"),')
     out.append('    page_size: int = Query(20, ge=1, le=100, description="Items per page"),')
@@ -110,7 +120,8 @@ def _build_entity_router(entity):
     out.append('    )')
     out.append('')
     # ========== CREATE ==========
-    out.append(f'@router.post("/", response_model={en}Response, status_code=201,')
+    # Empty path keeps POST /api/v1/<entity> slash-free (see LIST note).
+    out.append(f'@router.post("", response_model={en}Response, status_code=201,')
     out.append(f'         summary="Create {en}", operation_id="create_{sname}")')
     out.append(f'async def create_{sname}(')
     out.append(f'    data: {en}Create,')
@@ -535,7 +546,7 @@ def _build_health_router():
     out.append('"""AutoFlow AI - Health check endpoints."""')
     out.append('')
     out.append('from datetime import datetime, timezone')
-    out.append('from fastapi import APIRouter')
+    out.append('from fastapi import APIRouter, Depends')
     out.append('from app.core.config import settings')
     out.append('from sqlalchemy.ext.asyncio import AsyncSession')
     out.append('from sqlalchemy import text')

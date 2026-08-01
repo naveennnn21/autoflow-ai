@@ -8,14 +8,14 @@ from app.core.database import get_db
 from app.api.v1.deps import get_current_user, get_current_organization, CurrentUser
 
 from app.schemas.common import PaginatedResponse
-from app.schemas.o_auth_token import OAuthTokenCreate, OAuthTokenUpdate, OAuthTokenResponse
-from app.services.o_auth_token import OAuthTokenService
-from app.repositories.o_auth_token import OAuthTokenRepository
+from app.schemas.oauth_token import OAuthTokenCreate, OAuthTokenUpdate, OAuthTokenResponse
+from app.services.oauth_token import OAuthTokenService
+from app.repositories.oauth_token import OAuthTokenRepository
 
-router = APIRouter(prefix="/o_auth_token", tags=["OAuthToken"])
+router = APIRouter(prefix="/oauth_token", tags=["OAuthToken"])
 
-@router.get("/")
-async def list_o_auth_tokens(
+@router.get("")
+async def list_oauth_tokens(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     search: Optional[str] = Query(None, description="Search query"),
@@ -24,7 +24,7 @@ async def list_o_auth_tokens(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """List o_auth_tokens with pagination, filtering, and sorting."""
+    """List oauth_tokens with pagination, filtering, and sorting."""
     svc = OAuthTokenService(OAuthTokenRepository(db))
     pag = await svc.list(page=page, page_size=page_size,
         sort_by=sort_by, sort_order=sort_order,
@@ -32,14 +32,14 @@ async def list_o_auth_tokens(
     return pag
 
 @router.get("/search", response_model=PaginatedResponse)
-async def search_o_auth_tokens(
+async def search_oauth_tokens(
     q: str = Query(..., min_length=1, description="Search query"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """Search o_auth_tokens by query."""
+    """Search oauth_tokens by query."""
     svc = OAuthTokenService(OAuthTokenRepository(db))
     items, total = await svc.search(query=q, page=page, page_size=page_size
 )
@@ -48,9 +48,9 @@ async def search_o_auth_tokens(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=OAuthTokenResponse, status_code=201,
-         summary="Create OAuthToken", operation_id="create_o_auth_token")
-async def create_o_auth_token(
+@router.post("", response_model=OAuthTokenResponse, status_code=201,
+         summary="Create OAuthToken", operation_id="create_oauth_token")
+async def create_oauth_token(
     data: OAuthTokenCreate,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
@@ -61,8 +61,8 @@ async def create_o_auth_token(
 )
 
 @router.get("/{id}", response_model=OAuthTokenResponse,
-        summary="Get OAuthToken by ID", operation_id="get_o_auth_token")
-async def get_o_auth_token(
+        summary="Get OAuthToken by ID", operation_id="get_oauth_token")
+async def get_oauth_token(
     id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
@@ -76,8 +76,8 @@ async def get_o_auth_token(
     return obj
 
 @router.patch("/{id}", response_model=OAuthTokenResponse,
-          summary="Update OAuthToken", operation_id="update_o_auth_token")
-async def update_o_auth_token(
+          summary="Update OAuthToken", operation_id="update_oauth_token")
+async def update_oauth_token(
     id: UUID,
     data: OAuthTokenUpdate,
     db: AsyncSession = Depends(get_db),
@@ -92,8 +92,8 @@ async def update_o_auth_token(
     return obj
 
 @router.delete("/{id}", status_code=204,
-           summary="Delete OAuthToken", operation_id="delete_o_auth_token")
-async def delete_o_auth_token(
+           summary="Delete OAuthToken", operation_id="delete_oauth_token")
+async def delete_oauth_token(
     id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
@@ -105,8 +105,8 @@ async def delete_o_auth_token(
         raise HTTPException(status_code=404, detail="OAuthToken not found")
     return None
 @router.get("/count",
-    summary="Count o_auth_tokens", operation_id="count_o_auth_tokens")
-async def count_o_auth_tokens(
+    summary="Count oauth_tokens", operation_id="count_oauth_tokens")
+async def count_oauth_tokens(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):

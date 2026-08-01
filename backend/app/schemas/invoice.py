@@ -16,7 +16,7 @@ class InvoiceUpdate(BaseModel):
     description: Optional[str] = None
     paid_at: Optional[datetime] = None
     due_date: Optional[datetime] = None
-    metadata: Optional[dict] = None
+    extra_metadata: Optional[dict] = None
 
 
 class InvoiceResponse(BaseModel):
@@ -31,7 +31,7 @@ class InvoiceResponse(BaseModel):
     description: str
     paid_at: datetime
     due_date: datetime
-    metadata: dict
+    extra_metadata: dict
 
 
 class InvoicePublic(BaseModel):
@@ -44,4 +44,4 @@ class InvoicePublic(BaseModel):
     description: Optional[str] = None
     paid_at: Optional[datetime] = None
     due_date: Optional[datetime] = None
-    metadata: Optional[dict] = None
+    extra_metadata: Optional[dict] = None

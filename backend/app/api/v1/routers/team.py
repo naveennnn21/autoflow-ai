@@ -14,7 +14,7 @@ from app.repositories.team import TeamRepository
 
 router = APIRouter(prefix="/team", tags=["Team"])
 
-@router.get("/")
+@router.get("")
 async def list_teams(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_teams(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=TeamResponse, status_code=201,
+@router.post("", response_model=TeamResponse, status_code=201,
          summary="Create Team", operation_id="create_team")
 async def create_team(
     data: TeamCreate,

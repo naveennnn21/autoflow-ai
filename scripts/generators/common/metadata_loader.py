@@ -67,6 +67,7 @@ def _parse_field(name: str, config: dict) -> FieldDef:
         enum_values=enum_values,
         description=config.get('description', ''),
         max_length=config.get('max_length'),
+        column_name=config.get('column') or None,
     )
 
 

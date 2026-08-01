@@ -14,7 +14,7 @@ from app.repositories.audit_log import AuditLogRepository
 
 router = APIRouter(prefix="/audit_log", tags=["AuditLog"])
 
-@router.get("/")
+@router.get("")
 async def list_audit_logs(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_audit_logs(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=AuditLogResponse, status_code=201,
+@router.post("", response_model=AuditLogResponse, status_code=201,
          summary="Create AuditLog", operation_id="create_audit_log")
 async def create_audit_log(
     data: AuditLogCreate,

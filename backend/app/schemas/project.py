@@ -12,7 +12,7 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
-    metadata: Optional[dict] = None
+    extra_metadata: Optional[dict] = None
     deleted_at: Optional[datetime] = None
 
 
@@ -24,7 +24,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: str
     status: str
-    metadata: dict
+    extra_metadata: dict
     deleted_at: datetime
 
 
@@ -34,5 +34,5 @@ class ProjectPublic(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
-    metadata: Optional[dict] = None
+    extra_metadata: Optional[dict] = None
     deleted_at: Optional[datetime] = None

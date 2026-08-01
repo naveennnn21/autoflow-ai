@@ -25,13 +25,5 @@ register_middleware(app)
 async def health():
     return {"status": "healthy", "version": settings.app_version}
 
-from app.api.v1.auth import router as auth_router
-from app.api.v1.workflows import router as workflows_router
-from app.api.v1.executions import router as executions_router
-from app.api.v1.monitoring import router as monitoring_router
-from app.api.v1.billing import router as billing_router
-app.include_router(auth_router, prefix=settings.api_v1_prefix)
-app.include_router(workflows_router, prefix=settings.api_v1_prefix)
-app.include_router(executions_router, prefix=settings.api_v1_prefix)
-app.include_router(monitoring_router, prefix=settings.api_v1_prefix)
-app.include_router(billing_router, prefix=settings.api_v1_prefix)
+from app.api.v1 import api_v1_router
+app.include_router(api_v1_router)

@@ -1,7 +1,7 @@
 """AutoFlow AI - Health check endpoints."""
 
 from datetime import datetime, timezone
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text

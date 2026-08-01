@@ -14,7 +14,7 @@ from app.repositories.template import TemplateRepository
 
 router = APIRouter(prefix="/template", tags=["Template"])
 
-@router.get("/")
+@router.get("")
 async def list_templates(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_templates(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=TemplateResponse, status_code=201,
+@router.post("", response_model=TemplateResponse, status_code=201,
          summary="Create Template", operation_id="create_template")
 async def create_template(
     data: TemplateCreate,

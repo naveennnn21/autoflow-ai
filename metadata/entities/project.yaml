@@ -14,8 +14,11 @@ fields:
     nullable: true
   status:
     type: string
-  metadata:
+  # SQLAlchemy reserves `metadata` as a declarative attribute; expose it as
+  # `extra_metadata` while preserving the DB column name `metadata`.
+  extra_metadata:
     type: json
+    column: metadata
 relationships:
   organization:
     type: many_to_one

@@ -14,7 +14,7 @@ from app.repositories.invoice import InvoiceRepository
 
 router = APIRouter(prefix="/invoice", tags=["Invoice"])
 
-@router.get("/")
+@router.get("")
 async def list_invoices(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_invoices(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=InvoiceResponse, status_code=201,
+@router.post("", response_model=InvoiceResponse, status_code=201,
          summary="Create Invoice", operation_id="create_invoice")
 async def create_invoice(
     data: InvoiceCreate,

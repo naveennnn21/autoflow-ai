@@ -14,7 +14,7 @@ from app.repositories.user import UserRepository
 
 router = APIRouter(prefix="/user", tags=["User"])
 
-@router.get("/")
+@router.get("")
 async def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -48,7 +48,7 @@ async def search_users(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=UserResponse, status_code=201,
+@router.post("", response_model=UserResponse, status_code=201,
          summary="Create User", operation_id="create_user")
 async def create_user(
     data: UserCreate,

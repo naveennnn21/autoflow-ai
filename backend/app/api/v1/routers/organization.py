@@ -14,7 +14,7 @@ from app.repositories.organization import OrganizationRepository
 
 router = APIRouter(prefix="/organization", tags=["Organization"])
 
-@router.get("/")
+@router.get("")
 async def list_organizations(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -48,7 +48,7 @@ async def search_organizations(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=OrganizationResponse, status_code=201,
+@router.post("", response_model=OrganizationResponse, status_code=201,
          summary="Create Organization", operation_id="create_organization")
 async def create_organization(
     data: OrganizationCreate,

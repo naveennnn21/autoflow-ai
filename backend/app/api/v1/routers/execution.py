@@ -14,7 +14,7 @@ from app.repositories.execution import ExecutionRepository
 
 router = APIRouter(prefix="/execution", tags=["Execution"])
 
-@router.get("/")
+@router.get("")
 async def list_executions(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_executions(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=ExecutionResponse, status_code=201,
+@router.post("", response_model=ExecutionResponse, status_code=201,
          summary="Create Execution", operation_id="create_execution")
 async def create_execution(
     data: ExecutionCreate,

@@ -14,7 +14,7 @@ from app.repositories.workflow import WorkflowRepository
 
 router = APIRouter(prefix="/workflow", tags=["Workflow"])
 
-@router.get("/")
+@router.get("")
 async def list_workflows(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -52,7 +52,7 @@ async def search_workflows(
         page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
     )
 
-@router.post("/", response_model=WorkflowResponse, status_code=201,
+@router.post("", response_model=WorkflowResponse, status_code=201,
          summary="Create Workflow", operation_id="create_workflow")
 async def create_workflow(
     data: WorkflowCreate,
