@@ -1,0 +1,13 @@
+versioning:
+  description: >-
+    Workflow Specification version management. Version 1 is the initial
+    version; future versions register migration rules applied automatically
+    by the migrate() helper.
+  versions:
+    - version: 1
+      description: Initial Workflow Specification contract.
+      status: current
+  supported_versions: [1]
+  backward_compatible: true
+  forward_compatible: false
+  migration_rules: []

@@ -1,0 +1,23 @@
+variables:
+  description: >-
+    Variable resolution rules for the compile pipeline. Variables are declared
+    in the plan's variables section and referenced from node inputs/configs.
+  naming:
+    pattern: "^[A-Za-z_][A-Za-z0-9_.]*$"
+    case_sensitive: true
+  resolution:
+    strict: true
+    undefined_variable: error  # error | warn | ignore
+    unused_variable: error
+  types:
+    - any
+    - string
+    - number
+    - boolean
+    - object
+    - array
+  sources:
+    - input
+    - constant
+    - output
+    - computed

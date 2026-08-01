@@ -1,0 +1,37 @@
+ir:
+  description: >-
+    The IR is a validated, typed graph produced from the AST. Every node has
+    an op-code; variables and expressions have been resolved. The Workflow
+    Specification is built from this IR.
+  graph:
+    name: IRGraph
+    description: Typed intermediate graph with entry points.
+  ops:
+    trigger:
+      description: Entry-point trigger op.
+      inputs: []
+      outputs: [payload]
+    action:
+      description: Connector action op.
+      inputs: [connector, action, inputs]
+      outputs: [result]
+    condition:
+      description: Branching condition op.
+      inputs: [condition]
+      outputs: [branch]
+    loop:
+      description: Collection iteration op.
+      inputs: [collection, item, index]
+      outputs: [item, index]
+    transform:
+      description: Data transformation op (no connector).
+      inputs: [inputs]
+      outputs: [outputs]
+    wait:
+      description: Delay/wait op.
+      inputs: [duration]
+      outputs: []
+    notification:
+      description: Notification dispatch op.
+      inputs: [connector, action, inputs]
+      outputs: []

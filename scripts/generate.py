@@ -21,13 +21,14 @@ GENERATOR_MAP = {
     "backend.runtime": {"module": "scripts.generators.backend.runtime_generator", "class": "RuntimeGenerator", "deps": ["backend.models"]},
     "backend.connectors": {"module": "scripts.generators.backend.connector_generator", "class": "ConnectorGenerator", "deps": ["backend.models"]},
     "backend.ai": {"module": "scripts.generators.backend.ai_planner_generator", "class": "AIPlannerGenerator", "deps": ["backend.models", "backend.connectors"]},
+    "backend.compiler": {"module": "scripts.generators.backend.compiler_generator", "class": "CompilerGenerator", "deps": ["backend.ai", "backend.runtime", "backend.connectors"]},
     "backend.repositories": {"module": "scripts.generators.backend.repositories_generator", "class": "RepositoriesGenerator", "deps": ["backend.models"]},
     "backend.tasks": {"module": "scripts.generators.backend.tasks_generator", "class": "TasksGenerator", "deps": ["backend.services"]},
     "backend.docker": {"module": "scripts.generators.backend.docker_generator", "class": "DockerGenerator", "deps": []},
 }
 
 GROUP_MAP = {
-    "backend": ["backend.models", "backend.schemas", "backend.repositories", "backend.services", "backend.api", "backend.middleware", "backend.events", "backend.runtime", "backend.connectors", "backend.ai", "backend.tasks", "backend.docker"],
+    "backend": ["backend.models", "backend.schemas", "backend.repositories", "backend.services", "backend.api", "backend.middleware", "backend.events", "backend.runtime", "backend.connectors", "backend.ai", "backend.compiler", "backend.tasks", "backend.docker"],
     "frontend": ["frontend.pages", "frontend.components", "frontend.stores", "frontend.services"],
     "infra": ["infra.docker", "infra.kubernetes", "infra.github_actions"],
     "docs": ["docs"],

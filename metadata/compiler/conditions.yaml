@@ -1,0 +1,24 @@
+conditions:
+  description: >-
+    Condition language compiled by the condition_compiler stage. Conditions
+    may be strings ("status == done"), dicts ({operator, left, right}), or
+    boolean trees ({operator_chain, children}).
+  operators:
+    - ==
+    - "!="
+    - <
+    - ">"
+    - <=
+    - ">="
+    - contains
+    - starts_with
+    - ends_with
+    - in
+    - is_empty
+    - exists
+  chains:
+    - and
+    - or
+  safety:
+    eval: false
+    arbitrary_code: false

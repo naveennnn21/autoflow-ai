@@ -1,0 +1,25 @@
+workflow_spec:
+  version: 1
+  description: >-
+    The single immutable contract between the AI Planner (via the Prompt
+    Compiler) and the Workflow Runtime. Only this specification is consumed
+    by the runtime.
+  required_sections:
+    - workflow
+    - version
+    - nodes
+  optional_sections:
+    - metadata
+    - trigger
+    - variables
+    - constants
+    - edges
+    - conditions
+    - loops
+    - retry
+    - timeouts
+    - error_handling
+    - permissions
+    - connector_bindings
+    - runtime_settings
+    - outputs

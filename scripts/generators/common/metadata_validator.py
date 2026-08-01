@@ -80,6 +80,7 @@ class MetadataValidator:
         self._validate_directory('plugins', self._validate_plugins_file)
         self._validate_directory('middleware', self._validate_middleware_file)
         self._validate_directory('runtime', self._validate_runtime_file)
+        self._validate_directory('compiler', self._validate_compiler_file)
 
         return len(self.errors) == 0
 
@@ -596,6 +597,149 @@ class MetadataValidator:
                     f"{rel}.{mname}: unknown kind '{kind}' (valid: base, starlette)")
             if 'options' in mdef and not isinstance(mdef['options'], dict):
                 self.errors.append(f"{rel}.{mname}: 'options' must be a mapping")
+
+    COMPILER_PIPELINE_STAGES = (
+        'parse', 'validate_ast', 'build_ir', 'resolve_vars',
+        'compile_exprs', 'compile_conds', 'compile_loops', 'expand_tpls',
+        'resolve_deps', 'optimize', 'build_spec', 'validate_spec',
+    )
+
+    COMPILER_EXPRESSION_OPERATORS = {
+        '==', '!=', '<', '>', '<=', '>=', '&&', '||', '!',
+        '+', '-', '*', '/',
+    }
+
+    COMPILER_CONDITION_OPERATORS = {
+        '==', '!=', '<', '>', '<=', '>=', 'contains', 'starts_with',
+        'ends_with', 'in', 'is_empty', 'exists',
+    }
+
+    COMPILER_IR_OPS = {'trigger', 'action', 'condition', 'loop',
+                       'transform', 'wait', 'notification'}
+
+    def _validate_compiler_file(self, rel, data):
+        """Validate a compiler metadata YAML file."""
+        if not isinstance(data, dict):
+            self.errors.append(f"{rel}: root must be a mapping")
+            return
+        if 'compiler' in data:
+            self._validate_compiler_root(rel, data['compiler'])
+        if 'workflow_spec' in data:
+            ws = data['workflow_spec']
+            if not isinstance(ws, dict):
+                self.errors.append(f"{rel}: 'workflow_spec' must be a mapping")
+            else:
+                v = ws.get('version', 1)
+                if not isinstance(v, int) or isinstance(v, bool) or v < 1:
+                    self.errors.append(f"{rel}: spec version must be a positive integer")
+        if 'ast' in data:
+            ast_root = data['ast']
+            if not isinstance(ast_root, dict):
+                self.errors.append(f"{rel}: 'ast' must be a mapping")
+            else:
+                if 'nodes' in ast_root and not isinstance(ast_root['nodes'], dict):
+                    self.errors.append(f"{rel}.ast.nodes must be a mapping")
+        if 'ir' in data:
+            ir_root = data['ir']
+            if isinstance(ir_root, dict):
+                ops = ir_root.get('ops', {})
+                if not isinstance(ops, dict):
+                    self.errors.append(f"{rel}: 'ir.ops' must be a mapping")
+                else:
+                    for opname, opdef in ops.items():
+                        if opname not in self.COMPILER_IR_OPS:
+                            self.warnings.append(
+                                f"{rel}.ir.ops.{opname}: unknown IR op")
+        if 'expressions' in data:
+            exps = data['expressions']
+            if not isinstance(exps, dict):
+                self.errors.append(f"{rel}: 'expressions' must be a mapping")
+            else:
+                for ename, edef in exps.items():
+                    if isinstance(edef, dict):
+                        for op in edef.get('operators', []):
+                            if op not in self.COMPILER_EXPRESSION_OPERATORS:
+                                self.warnings.append(
+                                    f"{rel}.expressions.{ename}: unknown operator '{op}'")
+        if 'conditions' in data:
+            conds = data['conditions']
+            if not isinstance(conds, dict):
+                self.errors.append(f"{rel}: 'conditions' must be a mapping")
+            else:
+                for cname, cdef in conds.items():
+                    if isinstance(cdef, dict):
+                        for op in cdef.get('operators', []):
+                            if op not in self.COMPILER_CONDITION_OPERATORS:
+                                self.warnings.append(
+                                    f"{rel}.conditions.{cname}: unknown operator '{op}'")
+        if 'loops' in data:
+            loops = data['loops']
+            if not isinstance(loops, dict):
+                self.errors.append(f"{rel}: 'loops' must be a mapping")
+            else:
+                for lname, ldef in loops.items():
+                    if isinstance(ldef, dict):
+                        mi = ldef.get('max_iterations')
+                        if mi is not None and (not isinstance(mi, int)
+                                               or isinstance(mi, bool) or mi < 1):
+                            self.errors.append(
+                                f"{rel}.loops.{lname}: max_iterations must be >= 1")
+        if 'optimization' in data:
+            opt = data['optimization']
+            if not isinstance(opt, dict):
+                self.errors.append(f"{rel}: 'optimization' must be a mapping")
+            else:
+                passes = opt.get('passes', {})
+                if not isinstance(passes, dict):
+                    self.errors.append(f"{rel}: 'optimization.passes' must be a mapping")
+                else:
+                    for pname, pdef in passes.items():
+                        if isinstance(pdef, dict):
+                            if 'enabled' in pdef and not isinstance(pdef['enabled'], bool):
+                                self.errors.append(f"{rel}.optimization.passes.{pname}: 'enabled' must be boolean")
+                            if 'priority' in pdef and (not isinstance(pdef['priority'], int)
+                                                       or isinstance(pdef['priority'], bool)):
+                                self.errors.append(f"{rel}.optimization.passes.{pname}: 'priority' must be integer")
+        if 'versioning' in data:
+            ver = data['versioning']
+            if not isinstance(ver, dict):
+                self.errors.append(f"{rel}: 'versioning' must be a mapping")
+            else:
+                rules = ver.get('migration_rules', [])
+                if not isinstance(rules, list):
+                    self.errors.append(f"{rel}: 'versioning.migration_rules' must be a list")
+                else:
+                    for rule in rules:
+                        if isinstance(rule, dict):
+                            frm = rule.get('from', 1)
+                            to = rule.get('to', 1)
+                            if (not isinstance(frm, int) or isinstance(frm, bool)
+                                    or not isinstance(to, int) or isinstance(to, bool)):
+                                self.errors.append(f"{rel}: migration rule versions must be integers")
+                            elif to < frm:
+                                self.errors.append(
+                                    f"{rel}: migration rule to={to} < from={frm}")
+
+    def _validate_compiler_root(self, rel, root):
+        """Validate the compiler: root section."""
+        if not isinstance(root, dict):
+            self.errors.append(f"{rel}: 'compiler' must be a mapping")
+            return
+        stages = root.get('pipeline_stages')
+        if stages is not None:
+            if not isinstance(stages, list) or not stages:
+                self.errors.append(f"{rel}: 'pipeline_stages' must be a non-empty list")
+            else:
+                for stage in stages:
+                    if stage not in self.COMPILER_PIPELINE_STAGES:
+                        self.warnings.append(
+                            f"{rel}: unknown pipeline stage '{stage}'")
+        cfg = root.get('config')
+        if cfg is not None and not isinstance(cfg, dict):
+            self.errors.append(f"{rel}: 'config' must be a mapping")
+        rules = root.get('validation_rules')
+        if rules is not None and not isinstance(rules, list):
+            self.errors.append(f"{rel}: 'validation_rules' must be a list")
 
     def _validate_plugins_file(self, rel, data):
         """Validate a plugins/sdk YAML file."""

@@ -1,0 +1,135 @@
+import type { Workflow } from "@/types";
+
+const now = Date.now();
+const mins = (m: number) => new Date(now - m * 60000).toISOString();
+const hours = (h: number) => new Date(now - h * 3600000).toISOString();
+const days = (d: number) => new Date(now - d * 86400000).toISOString();
+
+export const workflows: Workflow[] = [
+  {
+    id: "wf_lead_intel",
+    name: "Lead Intelligence Pipeline",
+    description: "Enrich new HubSpot contacts with GitHub activity and file them in Airtable.",
+    status: "active",
+    trigger: "contact_created",
+    connectorIds: ["hubspot", "github", "airtable"],
+    runs: 1284, successRate: 98.2, avgDurationMs: 4200,
+    lastRunAt: mins(4), updatedAt: hours(3), favorite: true,
+    tags: ["sales", "crm"],
+    nodes: [
+      { id: "n1", kind: "trigger", label: "Contact Created", connector: "hubspot", status: "success" },
+      { id: "n2", kind: "action", label: "Enrich with GitHub", connector: "github", action: "Enrich Profile", status: "success" },
+      { id: "n3", kind: "condition", label: "Is Enterprise?", status: "success" },
+      { id: "n4", kind: "action", label: "Add to Airtable", connector: "airtable", action: "Create Record", status: "success" },
+      { id: "n5", kind: "action", label: "Notify Slack", connector: "slack", action: "Post Message", status: "success" },
+    ],
+    edges: [
+      { id: "e1", source: "n1", target: "n2" },
+      { id: "e2", source: "n2", target: "n3" },
+      { id: "e3", source: "n3", target: "n4", label: "yes" },
+      { id: "e4", source: "n4", target: "n5" },
+    ],
+  },
+  {
+    id: "wf_weekly_report",
+    name: "Weekly Revenue Digest",
+    description: "Aggregate Stripe payments and email a revenue summary every Monday.",
+    status: "active",
+    trigger: "cron",
+    connectorIds: ["stripe", "gmail"],
+    runs: 42, successRate: 100, avgDurationMs: 5800,
+    lastRunAt: days(2), updatedAt: days(2), favorite: true,
+    tags: ["finance", "reporting"],
+    nodes: [
+      { id: "n1", kind: "trigger", label: "Every Monday 9am", status: "success" },
+      { id: "n2", kind: "action", label: "Fetch Payments", connector: "stripe", action: "List Charges", status: "success" },
+      { id: "n3", kind: "ai", label: "Summarize Revenue", status: "success" },
+      { id: "n4", kind: "action", label: "Email Digest", connector: "gmail", action: "Send Email", status: "success" },
+    ],
+    edges: [
+      { id: "e1", source: "n1", target: "n2" },
+      { id: "e2", source: "n2", target: "n3" },
+      { id: "e3", source: "n3", target: "n4" },
+    ],
+  },
+  {
+    id: "wf_support_triage",
+    name: "Support Ticket Triage",
+    description: "Classify incoming support emails and route to the right Slack channel.",
+    status: "active",
+    trigger: "new_email",
+    connectorIds: ["gmail", "slack"],
+    runs: 3561, successRate: 96.4, avgDurationMs: 2600,
+    lastRunAt: mins(1), updatedAt: hours(6),
+    tags: ["support"],
+    nodes: [
+      { id: "n1", kind: "trigger", label: "New Email", connector: "gmail", status: "success" },
+      { id: "n2", kind: "ai", label: "Classify Intent", status: "success" },
+      { id: "n3", kind: "condition", label: "Urgent?", status: "success" },
+      { id: "n4", kind: "action", label: "Alert Support", connector: "slack", action: "Post Message", status: "running" },
+    ],
+    edges: [
+      { id: "e1", source: "n1", target: "n2" },
+      { id: "e2", source: "n2", target: "n3" },
+      { id: "e3", source: "n3", target: "n4", label: "yes" },
+    ],
+  },
+  {
+    id: "wf_deploy_notify",
+    name: "Deploy Notifications",
+    description: "Watch GitHub PR merges and announce deployments in Discord.",
+    status: "draft",
+    trigger: "pr_merged",
+    connectorIds: ["github", "discord"],
+    runs: 0, successRate: 0, avgDurationMs: 0,
+    updatedAt: hours(20),
+    tags: ["devops"],
+    nodes: [
+      { id: "n1", kind: "trigger", label: "PR Merged", connector: "github" },
+      { id: "n2", kind: "action", label: "Announce Deploy", connector: "discord", action: "Send Message" },
+    ],
+    edges: [{ id: "e1", source: "n1", target: "n2" }],
+  },
+  {
+    id: "wf_inventory_sync",
+    name: "Inventory Sync",
+    description: "Keep Shopify inventory in sync with the Postgres warehouse nightly.",
+    status: "paused",
+    trigger: "cron",
+    connectorIds: ["shopify", "postgres"],
+    runs: 96, successRate: 99.1, avgDurationMs: 12400,
+    lastRunAt: days(4), updatedAt: days(3),
+    tags: ["ecommerce"],
+    nodes: [
+      { id: "n1", kind: "trigger", label: "Every night 2am", status: "success" },
+      { id: "n2", kind: "action", label: "Fetch Products", connector: "shopify", action: "List Products", status: "success" },
+      { id: "n3", kind: "action", label: "Sync to Postgres", connector: "postgres", action: "Run Query", status: "success" },
+    ],
+    edges: [
+      { id: "e1", source: "n1", target: "n2" },
+      { id: "e2", source: "n2", target: "n3" },
+    ],
+  },
+  {
+    id: "wf_onboarding",
+    name: "Customer Onboarding",
+    description: "Send a welcome sequence when a new customer is created in Stripe.",
+    status: "active",
+    trigger: "customer_created",
+    connectorIds: ["stripe", "gmail", "notion"],
+    runs: 512, successRate: 99.8, avgDurationMs: 1900,
+    lastRunAt: mins(22), updatedAt: hours(50), favorite: true,
+    tags: ["growth"],
+    nodes: [
+      { id: "n1", kind: "trigger", label: "Customer Created", connector: "stripe", status: "success" },
+      { id: "n2", kind: "condition", label: "Plan is Pro?", status: "success" },
+      { id: "n3", kind: "action", label: "Send Welcome", connector: "gmail", action: "Send Email", status: "success" },
+      { id: "n4", kind: "action", label: "Log to Notion", connector: "notion", action: "Add DB Row", status: "success" },
+    ],
+    edges: [
+      { id: "e1", source: "n1", target: "n2" },
+      { id: "e2", source: "n2", target: "n3", label: "yes" },
+      { id: "e3", source: "n3", target: "n4" },
+    ],
+  },
+];

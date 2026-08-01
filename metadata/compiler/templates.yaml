@@ -1,0 +1,14 @@
+templates:
+  description: >-
+    Template syntax used inside node inputs and configs. Variables are
+    referenced with {{ name }} or ${name}; expansion is performed by the
+    template_expander stage using the plan constants/variables context.
+  syntax:
+    variable: "{{ name }}"
+    dollar_variable: "${name}"
+    nested_access: "{{ item.field }}"
+    strict: true
+  expansion:
+    enabled: true
+    unknown_variable: error  # error | leave_as_is
+    null_renders_as: ""

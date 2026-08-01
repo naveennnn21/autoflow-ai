@@ -13,6 +13,7 @@ module. Changes require re-running the validation suite and updating this file.
 | Connector Framework Generator | `scripts/generators/backend/connector_generator.py` | 2026-08-01 | 1. AST (70 generated files valid) 2. Imports (33 framework modules + packages) 3. Registry OK (26 connectors registered, names/versions/capabilities) 4. Factory OK (create by name/version/capability) 5. Authentication OK (OAuth2/OAuth-PKCE/API-key/Bearer/JWT/Basic + credential round-trip) 6. Triggers OK (webhook/polling/manual/cron/system/ai kinds) 7. Actions OK (kinds + input validation across 130 actions) 8. Integration tests (55/55 passed) 9. Documentation OK (`docs/connectors.md` covers all 26 connectors + required sections) 10. Cleanliness OK (no TODOs/placeholders/stray escapes) 11. Coverage 35.6% — validation pipeline `scripts/validate_connectors.py` 11/11 steps PASS; regression green (connectors 55/55 + events 44/44 + middleware 16/16); metadata validation PASS (26 connectors, 0 errors). NOTE: `ConnectorManager.execute` invokes connectors directly; the `ActionExecutor` resilience layers (retry/circuit-breaker/rate-limit/cache/idempotency) apply when callers wrap actions explicitly (documented in `docs/connectors.md`). Empty `organization_id` is treated as unscoped and skips the isolation check (documented). |
 
 | AI Planner Generator | `scripts/generators/backend/ai_planner_generator.py` | 2026-08-01 | 1. AST (40 generated files valid) 2. Imports (27 planner + 8 provider modules + package) 3. Metadata OK (3 strategies, 6 providers, 13 reasoning steps, 8 optimizer rules, 4 examples, 0 errors) 4. Planner init OK (AIPlanner + 52-entry catalog) 5. Pipeline OK (11 stages; deterministic plan steps=1) 6. Runtime compat OK (WorkflowPlan -> WorkflowCompiler DAG) 7. Connector compat OK (planner discovers real 26-connector catalog via slug aliases) 8. Integration tests (38/38 passed) 9. Documentation OK (`docs/ai_planner.md` 8 required sections) 10. Coverage report (module unavailable — skipped, recorded) 11. Cleanliness OK (no TODOs/placeholders/stray escapes) — validation pipeline `scripts/validate_ai_planner.py` 11/11 steps PASS; regression green (ai 38/38 + connectors 55/55 + events 44/44 + middleware 16/16 = 153); built programmatically via `scripts/build_ai_planner.py` (detect missing providers, append only missing, wholesale rewrite, verified in-registry fixes persisted durably). NOTE: planner reasons/plans only — the Workflow Runtime executes. Deterministic fallback heuristics when no LLM provider is configured. `_build_tests(pdef)` keeps an unused `pdef` param for caller compatibility; `_estimate_retries` returns 0.0 (estimated_retries in emitted plans is always 0) — both recorded as known limitations. PRE-EXISTING debt: `tests/services`/`tests/repositories` cannot collect (models declare a `metadata` field reserved by SQLAlchemy Declarative) — unrelated to this module. |
+| Prompt Compiler Generator | `scripts/generators/backend/compiler_generator.py` (built from `compiler_class_source.py`, `compiler_sources_build.py`, `compiler_sources_core.py`, `compiler_sources_io.py` via `scripts/build_compiler.py`) | 2026-08-01 | 1. AST (40 generated+test files valid) 2. Imports (29 modules + package) 3. Metadata OK (12 pipeline stages, spec version 1, 3 optimization passes, 7 AST nodes, 7 IR ops, 0 errors) 4. Parser validation OK (plan -> trigger + action node + start edge) 5. AST graph validation OK (valid graph + cycle detection) 6. IR validation OK (7 known ops, IRNode/IRGraph model) 7. Workflow Specification v1 OK (runtime definition carries connector subtype) 8. Runtime compat OK (compiled spec -> WorkflowCompiler DAG, trigger + action) 9. Integration tests (81/81 passed) 10. Documentation OK (`docs/compiler.md` 12 required sections) 11. Coverage report (stdlib trace unavailable — recorded, never fatal) 12. Cleanliness OK (41 files clean — AST scan + docs; no TODOs/placeholders/stray escapes) — validation pipeline `scripts/validate_compiler.py` 12/12 steps PASS; regression green (compiler 81/81). NOTE: per-node `retry`/`timeout`/`error_handling` emitted into spec nodes via dict access (IR carries plain dicts copied from AST); `edge_builder.build_edges` accepts `trigger_id` (plans whose trigger id is not `"trigger"` compile correctly); `events._sync_publish` bridges the async bus publish (asyncio.run without a running loop, create_task inside one); spec conditions serialized JSON-safe via `_condition_to_dict`/`_expr_to_dict`. PRE-EXISTING debt: `tests/services`/`tests/repositories` cannot collect (models declare a `metadata` field reserved by SQLAlchemy Declarative) — unrelated to this module. |
 
 ## AI Planner Validation Procedure
 
@@ -85,6 +86,29 @@ Re-freeze command:
 ```bash
 python scripts/generate.py backend.runtime --force
 python scripts/validate_runtime.py
+```
+
+## Prompt Compiler Validation Procedure
+
+1. **AST** - parse every generated `backend/app/compiler/*.py` and `tests/compiler/*.py` with `OutputValidator`.
+2. **Imports** - `import app.compiler.*` (29 modules + package) with `PYTHONPATH=backend`.
+3. **Metadata** - `MetadataLoader('metadata').load_all()`; `MetadataValidator` 0 errors on `metadata/compiler/*.yaml`; pipeline stages, spec version, optimization passes, AST nodes, IR ops populated.
+4. **Parser validation** - `WorkflowPlan` -> AST (trigger + action nodes + start edge).
+5. **AST graph validation** - structure + cycle detection.
+6. **IR validation** - known op codes + IRNode/IRGraph model.
+7. **Workflow Specification v1** - validates; runtime definition carries connector subtype.
+8. **Runtime compatibility** - compiled spec compiles through `app.runtime.compiler.WorkflowCompiler` into a DAG.
+9. **Integration tests** - `cd backend && python -m pytest ../tests/compiler -q` (81/81: parser, AST, IR, variable resolution, expressions, conditions, loops, dependencies, graph validation, optimization, version migration, serialization, workflow spec, end-to-end incl. per-node retry/timeout/error_handling, regression).
+10. **Documentation** - `docs/compiler.md` covers architecture, pipeline, AST, IR, spec, optimization, metadata, migration, versioning, examples, troubleshooting (12 required sections).
+11. **Coverage** - stdlib `trace` statement coverage report (best-effort; recorded, never fatal).
+12. **Cleanliness** - no TODOs, placeholders, or stray literal escapes in generated code.
+
+Re-freeze command:
+
+```bash
+python scripts/build_compiler.py      # programmatic builder (part-file assembly -> compiler_generator.py)
+python scripts/generate.py backend.compiler --force
+python scripts/validate_compiler.py
 ```
 
 ## Connector Framework Validation Procedure

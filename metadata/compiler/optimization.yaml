@@ -1,0 +1,20 @@
+optimization:
+  description: >-
+    Optimization passes applied to the IR graph before building the Workflow
+    Specification. Each pass is an independently testable pure function.
+  passes:
+    constant_folding:
+      description: Folds literal-only expressions into computed values.
+      enabled: true
+      priority: 10
+    dead_node_elimination:
+      description: Removes nodes unreachable from the entry points.
+      enabled: true
+      priority: 20
+    parallelization:
+      description: Detects independent branches and assigns parallel_group ids.
+      enabled: true
+      priority: 30
+  safety:
+    semantics_preserving: true
+    no_side_effects: true

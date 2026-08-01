@@ -1,0 +1,20 @@
+loops:
+  description: >-
+    Loop specifications compiled by the loop_compiler stage. Loops iterate a
+    collection with an item (and optional index) variable over child steps.
+  allowed_keys:
+    - collection
+    - item
+    - index
+    - max_iterations
+    - steps
+    - raw
+    - source
+  defaults:
+    item: item
+    index: index
+    max_iterations: 100
+  validation:
+    collection_required: true
+    max_iterations_min: 1
+    unknown_keys: error

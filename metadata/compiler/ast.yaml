@@ -1,0 +1,31 @@
+ast:
+  description: >-
+    The AST is a document model produced by the parser from a WorkflowPlan.
+    Nodes carry kind/type information; edges carry dependency direction.
+  nodes:
+    trigger:
+      description: Entry point of the workflow (event, schedule, webhook, manual).
+      fields: [id, kind, name, description, inputs, config, position]
+    action:
+      description: A connector action invocation (connector + action + inputs).
+      fields: [id, kind, name, connector, action, inputs, outputs, config, depends_on]
+    condition:
+      description: A branching condition evaluated before continuing.
+      fields: [id, kind, name, condition, depends_on]
+    loop:
+      description: A repeated collection iteration over child steps.
+      fields: [id, kind, name, loop, depends_on]
+    transform:
+      description: A data transformation step (no connector).
+      fields: [id, kind, name, inputs, outputs, depends_on]
+    wait:
+      description: A delay / wait step.
+      fields: [id, kind, name, config, depends_on]
+    notification:
+      description: A notification dispatch step.
+      fields: [id, kind, name, connector, action, inputs, depends_on]
+  edges:
+    depends_on:
+      description: A dependency edge between two steps.
+    starts:
+      description: The trigger-to-root-step edge.

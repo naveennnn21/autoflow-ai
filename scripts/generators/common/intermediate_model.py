@@ -435,6 +435,117 @@ class PlannerDef:
 
 
 @dataclass
+class ExpressionDef:
+    """A compiler expression definition (metadata/compiler/expressions.yaml)."""
+    name: str = ''
+    description: str = ''
+    operators: List[str] = field(default_factory=list)
+    functions: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ConditionDef:
+    """A compiler condition definition (metadata/compiler/conditions.yaml)."""
+    name: str = ''
+    description: str = ''
+    operators: List[str] = field(default_factory=list)
+
+
+@dataclass
+class LoopDef:
+    """A compiler loop definition (metadata/compiler/loops.yaml)."""
+    name: str = ''
+    description: str = ''
+    max_iterations: int = 100
+    allowed_keys: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ASTNodeDef:
+    """An AST node kind definition (metadata/compiler/ast.yaml)."""
+    name: str = ''
+    description: str = ''
+    allowed_fields: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ASTEdgeDef:
+    """An AST edge definition (metadata/compiler/ast.yaml)."""
+    name: str = ''
+    description: str = ''
+
+
+@dataclass
+class IRNodeDef:
+    """An IR op-code definition (metadata/compiler/ir.yaml)."""
+    name: str = ''
+    description: str = ''
+    inputs: List[str] = field(default_factory=list)
+    outputs: List[str] = field(default_factory=list)
+
+
+@dataclass
+class IRGraphDef:
+    """IR graph configuration (metadata/compiler/ir.yaml)."""
+    name: str = 'IRGraph'
+    description: str = ''
+
+
+@dataclass
+class OptimizationPassDef:
+    """An optimization pass definition (metadata/compiler/optimization.yaml)."""
+    name: str = ''
+    description: str = ''
+    enabled: bool = True
+    priority: int = 100
+
+
+@dataclass
+class MigrationRuleDef:
+    """A spec migration rule (metadata/compiler/versioning.yaml)."""
+    from_version: int = 1
+    to_version: int = 1
+    description: str = ''
+
+
+@dataclass
+class WorkflowSpecificationDef:
+    """Workflow Specification v1 shape (metadata/compiler/workflow_spec.yaml)."""
+    version: int = 1
+    description: str = ''
+    required_sections: List[str] = field(default_factory=list)
+    optional_sections: List[str] = field(default_factory=list)
+
+
+@dataclass
+class CompilerDef:
+    """Prompt compiler configuration driven by metadata/compiler/*.yaml."""
+    name: str = 'PromptCompiler'
+    description: str = ''
+    spec_version: int = 1
+    spec: Optional[WorkflowSpecificationDef] = None
+    ast_nodes: Dict[str, ASTNodeDef] = field(default_factory=dict)
+    ast_edges: Dict[str, ASTEdgeDef] = field(default_factory=dict)
+    ir_nodes: Dict[str, IRNodeDef] = field(default_factory=dict)
+    ir_graph: Optional[IRGraphDef] = None
+    expressions: Dict[str, ExpressionDef] = field(default_factory=dict)
+    conditions: Dict[str, ConditionDef] = field(default_factory=dict)
+    loops: Dict[str, LoopDef] = field(default_factory=dict)
+    optimization_passes: Dict[str, OptimizationPassDef] = field(default_factory=dict)
+    migration_rules: List[MigrationRuleDef] = field(default_factory=list)
+    pipeline_stages: List[str] = field(default_factory=list)
+    config: Dict[str, Any] = field(default_factory=dict)
+    validation_rules: List[str] = field(default_factory=list)
+
+    def sorted_passes(self) -> List['OptimizationPassDef']:
+        """Return optimization passes sorted by priority (ascending)."""
+        return sorted(
+            (p for p in self.optimization_passes.values() if p.enabled),
+            key=lambda p: p.priority,
+        )
+
+
+@dataclass
 class MetadataModel:
     """Complete metadata model containing all definitions."""
     entities: Dict[str, EntityDef] = field(default_factory=dict)
@@ -449,6 +560,7 @@ class MetadataModel:
     runtime: Optional[RuntimeDef] = None
     connectors: Dict[str, ConnectorDef] = field(default_factory=dict)
     planner: Optional[PlannerDef] = None
+    compiler: Optional[CompilerDef] = None
 
     def get_entity(self, name: str) -> Optional[EntityDef]:
         return self.entities.get(name)

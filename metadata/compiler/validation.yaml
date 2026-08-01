@@ -1,0 +1,27 @@
+validation:
+  description: >-
+    Full specification validation rules applied by the
+    WorkflowSpecificationValidator after compilation.
+  categories:
+    structure:
+      - missing_nodes
+      - invalid_edges
+      - disconnected_graphs
+      - circular_dependencies
+      - duplicate_node_ids
+    variables:
+      - undefined_variables
+      - unused_variables
+    conditions:
+      - invalid_operators
+    loops:
+      - missing_collection
+      - invalid_max_iterations
+    connectors:
+      - unknown_connector
+    permissions:
+      - undefined_permission
+    runtime_compat:
+      - unknown_node_type
+      - invalid_execution_mode
+      - version_compatibility

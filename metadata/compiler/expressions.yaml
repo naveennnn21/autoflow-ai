@@ -1,0 +1,14 @@
+expressions:
+  description: >-
+    Safe expression language compiled by the expression_compiler stage.
+    Expressions are parsed into an ExpressionSpec tree and evaluated without
+    eval() - only the operators and functions listed here are supported.
+  operators:
+    arithmetic: ["+", "-", "*", "/"]
+    comparison: ["==", "!=", "<", ">", "<=", ">="]
+    logical: ["&&", "||", "!"]
+  functions: []
+  safety:
+    eval: false
+    arbitrary_code: false
+    max_depth: 20

@@ -1,0 +1,41 @@
+compiler:
+  name: PromptCompiler
+  description: >-
+    Transforms a WorkflowPlan produced by the AI Planner into a deterministic,
+    versioned Workflow Specification v1 consumable by the Workflow Runtime.
+    The compiler ONLY compiles - it never executes workflows and never calls
+    connectors.
+  pipeline_stages:
+    - parse
+    - validate_ast
+    - build_ir
+    - resolve_vars
+    - compile_exprs
+    - compile_conds
+    - compile_loops
+    - expand_tpls
+    - resolve_deps
+    - optimize
+    - build_spec
+    - validate_spec
+  config:
+    spec_version: 1
+    optimize: true
+    expand_templates: true
+    strict_variables: true
+    max_nodes: 200
+    max_depth: 50
+    runtime_version: 1
+    timeout_seconds: 30.0
+  validation_rules:
+    - missing_nodes
+    - invalid_edges
+    - disconnected_graphs
+    - circular_dependencies
+    - undefined_variables
+    - unused_variables
+    - invalid_expressions
+    - connector_availability
+    - permission_conflicts
+    - runtime_compatibility
+    - version_compatibility

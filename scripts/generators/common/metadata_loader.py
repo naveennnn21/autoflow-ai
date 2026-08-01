@@ -9,11 +9,14 @@ import pathlib
 from typing import Any, Dict, List, Optional, Set
 
 from scripts.generators.common.intermediate_model import (
-    APIDef, APIEndpointDef, ConnectorAction, ConnectorAuth, ConnectorCapability,
+    APIDef, APIEndpointDef, ASTEdgeDef, ASTNodeDef, CompilerDef,
+    ConditionDef, ConnectorAction, ConnectorAuth, ConnectorCapability,
     ConnectorDef, ConnectorPolling, ConnectorRateLimit, ConnectorTrigger,
-    ConnectorWebhook, ConstraintDef, EntityDef, EventDef, FieldDef, IndexDef,
-    MetadataModel, MiddlewareDef, OptimizationRuleDef, PlanConstraintDef,
-    PlannerDef, RelationshipDef, RepositoryDef, RuntimeDef, ServiceDef,
+    ConnectorWebhook, ConstraintDef, EntityDef, EventDef, ExpressionDef,
+    FieldDef, IndexDef, IRGraphDef, IRNodeDef, LoopDef, MetadataModel,
+    MiddlewareDef, MigrationRuleDef, OptimizationPassDef,
+    OptimizationRuleDef, PlanConstraintDef, PlannerDef, RelationshipDef,
+    RepositoryDef, RuntimeDef, ServiceDef, WorkflowSpecificationDef,
 )
 
 # Type mappings from YAML to internal types
@@ -193,6 +196,8 @@ class MetadataLoader:
         self._load_connectors_metadata(model)
         # Load AI planner metadata
         self._load_ai_metadata(model)
+        # Load prompt compiler metadata
+        self._load_compiler_metadata(model)
         self._cache = model
         return model
 
@@ -775,6 +780,178 @@ class MetadataLoader:
                 pdef.examples = list(examples.values())
 
         model.planner = pdef
+
+    def _load_compiler_metadata(self, model: MetadataModel):
+        """Load prompt compiler metadata from metadata/compiler/.
+
+        Combines compiler.yaml (pipeline stages, limits, validation
+        rules), workflow_spec.yaml, ast.yaml, ir.yaml, expressions.yaml,
+        conditions.yaml, loops.yaml, optimization.yaml, versioning.yaml,
+        templates.yaml, and variables.yaml into a single CompilerDef
+        consumed by the prompt compiler generator.
+        """
+        comp_dir = self.metadata_dir / 'compiler'
+        if not comp_dir.exists():
+            return
+        cdef = CompilerDef()
+
+        def _get(name: str) -> Optional[dict]:
+            path = comp_dir / f'{name}.yaml'
+            if not path.exists():
+                return None
+            data = self._load_yaml(path)
+            return data if isinstance(data, dict) else None
+
+        compiler = _get('compiler')
+        if compiler:
+            root = compiler.get('compiler', compiler)
+            if isinstance(root, dict):
+                if root.get('name'):
+                    cdef.name = str(root['name'])
+                if root.get('description'):
+                    cdef.description = str(root['description'])
+                stages = root.get('pipeline_stages')
+                if isinstance(stages, list):
+                    cdef.pipeline_stages = [str(s) for s in stages]
+                cfg = root.get('config') or {}
+                if isinstance(cfg, dict):
+                    cdef.config.update(cfg)
+                    if 'spec_version' in cfg:
+                        try:
+                            cdef.spec_version = int(cfg['spec_version'])
+                        except (TypeError, ValueError):
+                            pass
+                rules = root.get('validation_rules')
+                if isinstance(rules, list):
+                    cdef.validation_rules = [str(r) for r in rules]
+
+        spec = _get('workflow_spec')
+        if spec:
+            ws = spec.get('workflow_spec', spec)
+            if isinstance(ws, dict):
+                cdef.spec = WorkflowSpecificationDef(
+                    version=int(ws.get('version', 1)),
+                    description=str(ws.get('description', '')),
+                    required_sections=[str(s) for s in
+                                       (ws.get('required_sections') or [])],
+                    optional_sections=[str(s) for s in
+                                       (ws.get('optional_sections') or [])],
+                )
+                cdef.spec_version = cdef.spec.version
+
+        ast_data = _get('ast')
+        if ast_data:
+            ast_root = ast_data.get('ast', ast_data)
+            if isinstance(ast_root, dict):
+                nodes = ast_root.get('nodes') or {}
+                if isinstance(nodes, dict):
+                    for name, ndef in nodes.items():
+                        if isinstance(ndef, dict):
+                            cdef.ast_nodes[name] = ASTNodeDef(
+                                name=str(name),
+                                description=str(ndef.get('description', '')),
+                                allowed_fields=[str(f) for f in
+                                                (ndef.get('fields') or [])],
+                            )
+                edges = ast_root.get('edges') or {}
+                if isinstance(edges, dict):
+                    for name, edef in edges.items():
+                        if isinstance(edef, dict):
+                            cdef.ast_edges[name] = ASTEdgeDef(
+                                name=str(name),
+                                description=str(edef.get('description', '')),
+                            )
+
+        ir_data = _get('ir')
+        if ir_data:
+            ir_root = ir_data.get('ir', ir_data)
+            if isinstance(ir_root, dict):
+                ops = ir_root.get('ops') or {}
+                if isinstance(ops, dict):
+                    for name, opdef in ops.items():
+                        if isinstance(opdef, dict):
+                            cdef.ir_nodes[name] = IRNodeDef(
+                                name=str(name),
+                                description=str(opdef.get('description', '')),
+                                inputs=[str(i) for i in (opdef.get('inputs') or [])],
+                                outputs=[str(o) for o in (opdef.get('outputs') or [])],
+                            )
+                graph_cfg = ir_root.get('graph') or {}
+                if isinstance(graph_cfg, dict):
+                    cdef.ir_graph = IRGraphDef(
+                        name=str(graph_cfg.get('name', 'IRGraph')),
+                        description=str(graph_cfg.get('description', '')),
+                    )
+
+        expressions = _get('expressions')
+        if expressions:
+            exp_root = expressions.get('expressions', expressions)
+            if isinstance(exp_root, dict):
+                for name, edef in exp_root.items():
+                    if isinstance(edef, dict):
+                        cdef.expressions[name] = ExpressionDef(
+                            name=str(name),
+                            description=str(edef.get('description', '')),
+                            operators=[str(o) for o in (edef.get('operators') or [])],
+                            functions=[str(f) for f in (edef.get('functions') or [])],
+                        )
+
+        conditions = _get('conditions')
+        if conditions:
+            cond_root = conditions.get('conditions', conditions)
+            if isinstance(cond_root, dict):
+                for name, cdef2 in cond_root.items():
+                    if isinstance(cdef2, dict):
+                        cdef.conditions[name] = ConditionDef(
+                            name=str(name),
+                            description=str(cdef2.get('description', '')),
+                            operators=[str(o) for o in (cdef2.get('operators') or [])],
+                        )
+
+        loops = _get('loops')
+        if loops:
+            loop_root = loops.get('loops', loops)
+            if isinstance(loop_root, dict):
+                for name, ldef in loop_root.items():
+                    if isinstance(ldef, dict):
+                        cdef.loops[name] = LoopDef(
+                            name=str(name),
+                            description=str(ldef.get('description', '')),
+                            max_iterations=int(ldef.get('max_iterations', 100)),
+                            allowed_keys=[str(k) for k in
+                                          (ldef.get('allowed_keys') or [])],
+                        )
+
+        optimization = _get('optimization')
+        if optimization:
+            opt_root = optimization.get('optimization', optimization)
+            if isinstance(opt_root, dict):
+                passes = opt_root.get('passes') or {}
+                if isinstance(passes, dict):
+                    for name, pdef in passes.items():
+                        if isinstance(pdef, dict):
+                            cdef.optimization_passes[name] = OptimizationPassDef(
+                                name=str(name),
+                                description=str(pdef.get('description', '')),
+                                enabled=bool(pdef.get('enabled', True)),
+                                priority=int(pdef.get('priority', 100)),
+                            )
+
+        versioning = _get('versioning')
+        if versioning:
+            ver_root = versioning.get('versioning', versioning)
+            if isinstance(ver_root, dict):
+                rules = ver_root.get('migration_rules') or []
+                if isinstance(rules, list):
+                    for rule in rules:
+                        if isinstance(rule, dict):
+                            cdef.migration_rules.append(MigrationRuleDef(
+                                from_version=int(rule.get('from', 1)),
+                                to_version=int(rule.get('to', 1)),
+                                description=str(rule.get('description', '')),
+                            ))
+
+        model.compiler = cdef
 
     def _load_yaml(self, path: pathlib.Path) -> Optional[dict]:
         """Load a YAML file. Falls back to JSON if yaml not available."""
