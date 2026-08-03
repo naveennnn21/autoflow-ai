@@ -134,11 +134,7 @@ class TestMarketplaceItemRepository:
         count_result = MagicMock()
         count_result.scalar.return_value = 1
 
-        def execute_side_effect(stmt):
-            if hasattr(stmt, "_offset"):
-                return mock_result
-            return count_result
-        db_session.execute = AsyncMock(side_effect=execute_side_effect)
+        db_session.execute = AsyncMock(side_effect=[count_result, mock_result])
 
         items, total = await repo.search()
         assert total == 1

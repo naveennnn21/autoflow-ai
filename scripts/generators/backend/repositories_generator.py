@@ -746,11 +746,10 @@ def _build_test(entity: EntityDef, repo_config: Optional[RepositoryDef] = None) 
     parts.append('        count_result = MagicMock()')
     parts.append('        count_result.scalar.return_value = 1')
     parts.append('')
-    parts.append('        def execute_side_effect(stmt):')
-    parts.append('            if hasattr(stmt, "_offset"):')
-    parts.append('                return mock_result')
-    parts.append('            return count_result')
-    parts.append('        db_session.execute = AsyncMock(side_effect=execute_side_effect)')
+    # search() runs the count query first, then the paged select query.
+    # Order-based side effects are used because SQLAlchemy 2.0 exposes
+    # _offset on both statements, breaking an attribute-based probe.
+    parts.append('        db_session.execute = AsyncMock(side_effect=[count_result, mock_result])')
     parts.append('')
     parts.append('        items, total = await repo.search()')
     parts.append('        assert total == 1')

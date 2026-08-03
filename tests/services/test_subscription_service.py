@@ -39,7 +39,7 @@ class TestSubscriptionService:
         mock_obj.id = obj_id
         mock_repository.create.return_value = mock_obj
         mock_repository.get.return_value = None
-        data = SubscriptionCreate()
+        data = SubscriptionCreate(organization_id=str(uuid.uuid4()), plan_id="Test", current_period_start="2026-01-01T00:00:00", current_period_end="2026-01-01T00:00:00")
         result = await service.create(data)
         assert result is not None
         assert result.id == obj_id
@@ -119,7 +119,7 @@ class TestSubscriptionService:
         """Test authorization hook denies create."""
         with patch.object(service, "_authorize_create", return_value=False):
             with pytest.raises(PermissionError):
-                await service.create(SubscriptionCreate())
+                await service.create(SubscriptionCreate(organization_id=str(uuid.uuid4()), plan_id="Test", current_period_start="2026-01-01T00:00:00", current_period_end="2026-01-01T00:00:00"))
 
     async def test_authorization_read_denied(self, service, mock_repository):
         """Test authorization hook denies read."""
@@ -164,7 +164,7 @@ class TestSubscriptionService:
         mock_obj.id = uuid.uuid4()
         mock_repository.create.return_value = mock_obj
         with patch.object(service, "_cache_invalidate") as mock_inv:
-            await service.create(SubscriptionCreate())
+            await service.create(SubscriptionCreate(organization_id=str(uuid.uuid4()), plan_id="Test", current_period_start="2026-01-01T00:00:00", current_period_end="2026-01-01T00:00:00"))
             mock_inv.assert_called_once_with("list")
 
     async def test_cache_invalidates_on_update(self, service, mock_repository):
@@ -190,7 +190,7 @@ class TestSubscriptionService:
         async def collector(event): events.append(event)
         subscribe("Subscription.Created", collector)
         try:
-            await service.create(SubscriptionCreate())
+            await service.create(SubscriptionCreate(organization_id=str(uuid.uuid4()), plan_id="Test", current_period_start="2026-01-01T00:00:00", current_period_end="2026-01-01T00:00:00"))
             assert len(events) > 0, "No events were published"
         finally:
             unsubscribe("Subscription.Created", collector)
@@ -206,7 +206,7 @@ class TestSubscriptionService:
         mock_obj.id = uuid.uuid4()
         mock_repository.create.side_effect = [DeadlockError("deadlock"), mock_obj]
         try:
-            await service.create(SubscriptionCreate())
+            await service.create(SubscriptionCreate(organization_id=str(uuid.uuid4()), plan_id="Test", current_period_start="2026-01-01T00:00:00", current_period_end="2026-01-01T00:00:00"))
         except Exception:
             pass
         assert mock_repository.create.call_count >= 2

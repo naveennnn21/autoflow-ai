@@ -39,7 +39,7 @@ class TestUserService:
         mock_obj.id = obj_id
         mock_repository.create.return_value = mock_obj
         mock_repository.get.return_value = None
-        data = UserCreate()
+        data = UserCreate(email="Test", full_name="Test")
         result = await service.create(data)
         assert result is not None
         assert result.id == obj_id
@@ -119,7 +119,7 @@ class TestUserService:
         """Test authorization hook denies create."""
         with patch.object(service, "_authorize_create", return_value=False):
             with pytest.raises(PermissionError):
-                await service.create(UserCreate())
+                await service.create(UserCreate(email="Test", full_name="Test"))
 
     async def test_authorization_read_denied(self, service, mock_repository):
         """Test authorization hook denies read."""
@@ -164,7 +164,7 @@ class TestUserService:
         mock_obj.id = uuid.uuid4()
         mock_repository.create.return_value = mock_obj
         with patch.object(service, "_cache_invalidate") as mock_inv:
-            await service.create(UserCreate())
+            await service.create(UserCreate(email="Test", full_name="Test"))
             mock_inv.assert_called_once_with("list")
 
     async def test_cache_invalidates_on_update(self, service, mock_repository):
@@ -190,7 +190,7 @@ class TestUserService:
         async def collector(event): events.append(event)
         subscribe("User.Created", collector)
         try:
-            await service.create(UserCreate())
+            await service.create(UserCreate(email="Test", full_name="Test"))
             assert len(events) > 0, "No events were published"
         finally:
             unsubscribe("User.Created", collector)
@@ -206,7 +206,7 @@ class TestUserService:
         mock_obj.id = uuid.uuid4()
         mock_repository.create.side_effect = [DeadlockError("deadlock"), mock_obj]
         try:
-            await service.create(UserCreate())
+            await service.create(UserCreate(email="Test", full_name="Test"))
         except Exception:
             pass
         assert mock_repository.create.call_count >= 2

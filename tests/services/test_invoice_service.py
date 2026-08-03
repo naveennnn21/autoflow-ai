@@ -39,7 +39,7 @@ class TestInvoiceService:
         mock_obj.id = obj_id
         mock_repository.create.return_value = mock_obj
         mock_repository.get.return_value = None
-        data = InvoiceCreate()
+        data = InvoiceCreate(organization_id=str(uuid.uuid4()), amount=100.0)
         result = await service.create(data)
         assert result is not None
         assert result.id == obj_id
@@ -119,7 +119,7 @@ class TestInvoiceService:
         """Test authorization hook denies create."""
         with patch.object(service, "_authorize_create", return_value=False):
             with pytest.raises(PermissionError):
-                await service.create(InvoiceCreate())
+                await service.create(InvoiceCreate(organization_id=str(uuid.uuid4()), amount=100.0))
 
     async def test_authorization_read_denied(self, service, mock_repository):
         """Test authorization hook denies read."""
@@ -164,7 +164,7 @@ class TestInvoiceService:
         mock_obj.id = uuid.uuid4()
         mock_repository.create.return_value = mock_obj
         with patch.object(service, "_cache_invalidate") as mock_inv:
-            await service.create(InvoiceCreate())
+            await service.create(InvoiceCreate(organization_id=str(uuid.uuid4()), amount=100.0))
             mock_inv.assert_called_once_with("list")
 
     async def test_cache_invalidates_on_update(self, service, mock_repository):
@@ -190,7 +190,7 @@ class TestInvoiceService:
         async def collector(event): events.append(event)
         subscribe("Invoice.Created", collector)
         try:
-            await service.create(InvoiceCreate())
+            await service.create(InvoiceCreate(organization_id=str(uuid.uuid4()), amount=100.0))
             assert len(events) > 0, "No events were published"
         finally:
             unsubscribe("Invoice.Created", collector)
@@ -206,7 +206,7 @@ class TestInvoiceService:
         mock_obj.id = uuid.uuid4()
         mock_repository.create.side_effect = [DeadlockError("deadlock"), mock_obj]
         try:
-            await service.create(InvoiceCreate())
+            await service.create(InvoiceCreate(organization_id=str(uuid.uuid4()), amount=100.0))
         except Exception:
             pass
         assert mock_repository.create.call_count >= 2

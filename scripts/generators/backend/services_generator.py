@@ -630,11 +630,65 @@ def _build_init_content(entities: List[EntityDef]) -> str:
     return "\n".join(parts)
 
 
+def _create_dto_kwargs(entity: EntityDef) -> str:
+    """Build constructor kwargs for a valid Create DTO for the entity.
+
+    Uses the schema definition from the schemas generator (SCHEMAS) so the
+    generated tests construct DTOs that pass Pydantic validation. Falls back
+    to deriving required fields from entity metadata when SCHEMAS has no
+    entry, so a missing schema can never silently regress generated tests
+    to an empty XCreate().
+    """
+    from scripts.generators.backend.schemas_generator import SCHEMAS
+    key = _to_snake_case(entity.name)
+    schema = SCHEMAS.get(key)
+    if schema:
+        field_specs = schema.get("fields", [])
+    else:
+        field_specs = [
+            (f.name, f.type, f.enum_values,
+             not f.nullable and f.default is None, False)
+            for f in entity.fields.values()
+        ]
+    args = []
+    for name, st, en, req, sens in field_specs:
+        if not req or sens:
+            continue
+        t = (st or "str").lower()
+        if "uuid" in t:
+            args.append(f'{name}=str(uuid.uuid4())')
+        elif "string" in t or "text" in t:
+            args.append(f'{name}="Test"')
+        elif "integer" in t:
+            args.append(f'{name}=1')
+        elif "float" in t:
+            args.append(f'{name}=100.0')
+        elif "boolean" in t:
+            args.append(f'{name}=True')
+        elif "datetime" in t:
+            args.append(f'{name}="2026-01-01T00:00:00"')
+        elif "json" in t:
+            args.append(f'{name}={{}}')
+        elif en:
+            fdef = entity.fields.get(name)
+            if fdef and fdef.enum_values:
+                args.append(f'{name}={fdef.enum_values[0]!r}')
+            else:
+                # Best-effort sample; fails loudly instead of passing None.
+                args.append(f'{name}={en!r}')
+        else:
+            args.append(f'{name}="Test"')
+    return ", ".join(args)
+
+
 def _build_test(entity: EntityDef) -> str:
     """Generate a pytest test file for an entity's service."""
     fname = _to_snake_case(entity.name)
     has_soft_delete = entity.soft_delete or "deleted_at" in entity.fields
     is_tenant = entity.tenant
+    # Valid Create DTO so generated tests pass Pydantic validation and stay
+    # correct across regenerations (previously emitted an empty XCreate()).
+    create_dto = entity.name + 'Create(' + _create_dto_kwargs(entity) + ')'
 
     parts = [
         '"""Tests for the ' + entity.name + 'Service."""',
@@ -678,7 +732,7 @@ def _build_test(entity: EntityDef) -> str:
         '        mock_obj.id = obj_id',
         '        mock_repository.create.return_value = mock_obj',
         '        mock_repository.get.return_value = None',
-        '        data = ' + entity.name + 'Create()',
+        '        data = ' + create_dto,
         '        result = await service.create(data)',
         '        assert result is not None',
         '        assert result.id == obj_id',
@@ -758,7 +812,7 @@ def _build_test(entity: EntityDef) -> str:
         '        """Test authorization hook denies create."""',
         '        with patch.object(service, "_authorize_create", return_value=False):',
         '            with pytest.raises(PermissionError):',
-        '                await service.create(' + entity.name + 'Create())',
+        '                await service.create(' + create_dto + ')',
         '',
         '    async def test_authorization_read_denied(self, service, mock_repository):',
         '        """Test authorization hook denies read."""',
@@ -803,7 +857,7 @@ def _build_test(entity: EntityDef) -> str:
         '        mock_obj.id = uuid.uuid4()',
         '        mock_repository.create.return_value = mock_obj',
         '        with patch.object(service, "_cache_invalidate") as mock_inv:',
-        '            await service.create(' + entity.name + 'Create())',
+        '            await service.create(' + create_dto + ')',
         '            mock_inv.assert_called_once_with("list")',
         '',
         '    async def test_cache_invalidates_on_update(self, service, mock_repository):',
@@ -829,7 +883,7 @@ def _build_test(entity: EntityDef) -> str:
         '        async def collector(event): events.append(event)',
         '        subscribe(' + chr(34) + entity.name + '.Created' + chr(34) + ', collector)',
         '        try:',
-        '            await service.create(' + entity.name + 'Create())',
+        '            await service.create(' + create_dto + ')',
         '            assert len(events) > 0, "No events were published"',
         '        finally:',
         '            unsubscribe(' + chr(34) + entity.name + '.Created' + chr(34) + ', collector)',
@@ -845,7 +899,7 @@ def _build_test(entity: EntityDef) -> str:
         '        mock_obj.id = uuid.uuid4()',
         '        mock_repository.create.side_effect = [DeadlockError("deadlock"), mock_obj]',
         '        try:',
-        '            await service.create(' + entity.name + 'Create())',
+        '            await service.create(' + create_dto + ')',
         '        except Exception:',
         '            pass',
         '        assert mock_repository.create.call_count >= 2',
@@ -896,7 +950,7 @@ def _build_di_test(entities: List[EntityDef]) -> str:
         '',
         'import pytest',
         'from unittest.mock import AsyncMock',
-        'from app.services.di import get_service, SERVICE_REGISTRY',
+        'from app.services.di import SERVICE_REGISTRY',
         '',
         '',
         'class TestDI:',

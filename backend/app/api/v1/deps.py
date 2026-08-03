@@ -75,7 +75,7 @@ async def get_current_user(
             from jose import jwt
             payload = jwt.decode(
                 credentials.credentials, settings.secret_key,
-                algorithms=[settings.jwt_algorithm],
+                algorithms=[settings.algorithm],
             )
             return CurrentUser(
                 user_id=payload.get("sub"),
@@ -88,7 +88,10 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
             )
-    return CurrentUser(user_id=None)
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+    )
 
 
 async def get_current_organization(
