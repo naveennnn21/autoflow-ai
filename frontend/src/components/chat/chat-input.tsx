@@ -1,14 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp, Paperclip } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { useChat } from "@/stores/chat";
 import { Button } from "@/components/ui/button";
 
 const suggestions = [
-  "When a new contact is created in HubSpot, enrich it with GitHub and log to Airtable",
-  "Send a weekly revenue summary from Stripe to email every Monday",
-  "When a Slack message mentions 'urgent', create a Linear issue and notify the team",
+  "Monitor competitors and notify Slack",
+  "Process invoices from Gmail",
+  "Automate GitHub release notes",
+  "Generate weekly analytics reports",
+  "Sync customer data to Airtable",
 ];
 
 export function ChatInput() {
@@ -25,8 +27,8 @@ export function ChatInput() {
 
   return (
     <div className="space-y-3">
-      <div className="relative rounded-2xl border border-border/80 bg-card/90 p-2 shadow-[0_8px_32px_-16px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_32px_-8px_hsl(var(--primary)/0.45)]">
-        <div aria-hidden className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      {/* Large composer */}
+      <div className="relative rounded-2xl border border-border/60 bg-card/80 p-1.5 transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_32px_-8px_hsl(var(--primary)/0.35)]">
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -36,36 +38,38 @@ export function ChatInput() {
               submit(value);
             }
           }}
-          rows={2}
-          placeholder="Describe the automation you want to build..."
-          className="max-h-40 w-full resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+          rows={1}
+          placeholder="What do you want to automate?"
+          className="max-h-32 w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground/60"
+          style={{ minHeight: "48px" }}
         />
-        <div className="flex items-center justify-between px-1 pb-0.5">
-          <Button variant="ghost" size="icon-sm" aria-label="Attach file" className="text-muted-foreground">
-            <Paperclip className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center justify-between px-3 pb-1 pt-0">
+          <span className="text-[11px] text-muted-foreground/50">Enter to send · Shift+Enter for new line</span>
           <Button
             size="icon"
             onClick={() => submit(value)}
             disabled={!value.trim() || isStreaming}
             aria-label="Send"
-            className="bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)] transition-transform hover:scale-105 active:scale-95"
+            className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)] transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
           >
             <ArrowUp className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {/* Suggestions */}
       <div className="flex flex-wrap gap-2">
         {suggestions.map((s) => (
           <button
             key={s}
             onClick={() => submit(s)}
-            className="rounded-full border border-border/70 bg-card/60 px-3 py-1.5 text-left text-xs text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:text-foreground hover:shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.4)]"
+            disabled={isStreaming}
+            className="rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:text-foreground hover:shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.4)] disabled:opacity-50"
           >
-            {s.length > 72 ? `${s.slice(0, 72)}…` : s}
+            {s}
           </button>
         ))}
       </div>
     </div>
   );
-}
+}

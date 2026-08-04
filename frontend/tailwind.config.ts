@@ -21,6 +21,8 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         "background-2": "hsl(var(--background-2))",
+        elevated: "hsl(var(--elevated))",
+        surface: "hsl(var(--surface))",
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -58,6 +60,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        error: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
         info: {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
@@ -66,6 +72,18 @@ const config: Config = {
           purple: "#A78BFA",
           cyan: "#59D6FF",
           blue: "#7C8CF8",
+          bg: "#0B1018",
+          "bg-2": "#101827",
+          elevated: "#161F2C",
+          surface: "#1B2636",
+          border: "#2A3A52",
+          success: "#4ADE80",
+          warning: "#FBBF24",
+          error: "#FB7185",
+          text: "#F7F9FC",
+          "text-secondary": "#B5C0D0",
+          muted: "#778399",
+          paper: "#F5F7FA",
         },
       },
       borderRadius: {
@@ -80,6 +98,21 @@ const config: Config = {
         sans: ["var(--font-sans)", "Rubik", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "monospace"],
       },
+      fontSize: {
+        hero: "clamp(3.75rem, 9vw, 9.5rem)",
+        section: "clamp(2.75rem, 6vw, 6.5rem)",
+        display: "clamp(2.25rem, 4.5vw, 4.5rem)",
+        title: "clamp(1.875rem, 3vw, 3rem)",
+      },
+      lineHeight: {
+        tightest: "0.95",
+        tighter: "1.05",
+      },
+      letterSpacing: {
+        tighter: "-0.03em",
+        tightest: "-0.045em",
+        "wide-2": "0.12em",
+      },
       boxShadow: {
         glow: "0 0 40px -8px hsl(var(--primary) / 0.5)",
         "glow-cyan": "0 0 40px -8px hsl(var(--info) / 0.5)",
@@ -87,6 +120,8 @@ const config: Config = {
         soft: "0 8px 40px -12px rgba(0, 0, 0, 0.4)",
         "soft-lg": "0 24px 80px -24px rgba(0, 0, 0, 0.5)",
         "inner-glow": "inset 0 1px 0 0 hsl(var(--foreground) / 0.06)",
+        lift: "0 1px 0 0 hsl(var(--foreground) / 0.04), 0 12px 48px -16px rgba(0, 0, 0, 0.6)",
+        hairline: "inset 0 1px 0 0 hsl(var(--foreground) / 0.05)",
       },
       keyframes: {
         "accordion-down": {
@@ -121,9 +156,25 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-14px)" },
         },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0) translateX(0)" },
+          "50%": { transform: "translateY(-22px) translateX(8px)" },
+        },
+        drift: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "33%": { transform: "translate(3%, -4%) scale(1.04)" },
+          "66%": { transform: "translate(-3%, 3%) scale(0.97)" },
+        },
+        "dash-flow": {
+          to: { "stroke-dashoffset": "-24" },
+        },
         "pulse-glow": {
           "0%, 100%": { opacity: "0.6" },
           "50%": { opacity: "1" },
+        },
+        "pulse-soft": {
+          "0%, 100%": { opacity: "0.35" },
+          "50%": { opacity: "0.85" },
         },
         marquee: {
           "0%": { transform: "translateX(0)" },
@@ -166,6 +217,22 @@ const config: Config = {
           "0%, 100%": { boxShadow: "0 0 20px -4px hsl(var(--primary) / 0.35)" },
           "50%": { boxShadow: "0 0 44px -4px hsl(var(--primary) / 0.65)" },
         },
+        "wiggle": {
+          "0%, 100%": { transform: "rotate(-3deg)" },
+          "50%": { transform: "rotate(3deg)" },
+        },
+        "line-grow": {
+          from: { transform: "scaleX(0)" },
+          to: { transform: "scaleX(1)" },
+        },
+        "flicker": {
+          "0%, 100%": { opacity: "1" },
+          "92%": { opacity: "1" },
+          "93%": { opacity: "0.4" },
+          "94%": { opacity: "1" },
+          "97%": { opacity: "0.6" },
+          "98%": { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -175,7 +242,11 @@ const config: Config = {
         mesh: "mesh 18s ease-in-out infinite",
         beam: "beam 3.2s ease-in-out infinite",
         float: "float 6s ease-in-out infinite",
+        "float-slow": "float-slow 11s ease-in-out infinite",
+        drift: "drift 22s ease-in-out infinite",
+        "dash-flow": "dash-flow 1.1s linear infinite",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
+        "pulse-soft": "pulse-soft 4s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
         "spin-slow": "spin-slow 8s linear infinite",
         orbit: "orbit 20s linear infinite",
@@ -186,6 +257,9 @@ const config: Config = {
         "scale-in": "scale-in 0.35s ease-out both",
         "slide-in-right": "slide-in-right 0.4s ease-out both",
         "glow-pulse": "glow-pulse 2.4s ease-in-out infinite",
+        wiggle: "wiggle 5s ease-in-out infinite",
+        "line-grow": "line-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both",
+        flicker: "flicker 6s linear infinite",
       },
       transitionTimingFunction: {
         spring: "cubic-bezier(0.22, 1, 0.36, 1)",

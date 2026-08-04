@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Github, Loader2, Mail, Sparkles } from "lucide-react";
+import { Github, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,66 +24,43 @@ export default function LoginPage() {
     if (!email || !password) return;
     setLoading(true);
     await login(email);
-    toast.success("Welcome back, Ava");
+    toast.success("Welcome back");
     router.push("/dashboard");
   };
 
   const magicLink = async () => {
-    if (!email) {
-      toast.error("Enter your email first");
-      return;
-    }
+    if (!email) { toast.error("Enter your email first"); return; }
     setLoading(true);
     await new Promise((r) => setTimeout(r, 900));
-    toast.success("Magic link sent", { description: `Check ${email} for your sign-in link` });
+    toast.success("Magic link sent", { description: `Check ${email}` });
     setLoading(false);
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 200, damping: 24 }}
-      className="relative rounded-2xl border border-border/70 bg-card/80 p-8 shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.05),0_24px_80px_-24px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div aria-hidden className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-      <div className="mb-6 space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">Sign in to your workspace to continue.</p>
+      <div className="mb-8 text-center">
+        <p className="text-section text-balance leading-[1.05]">Build something automatic.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Sign in to your workspace.</p>
       </div>
 
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="email">Work email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
+          <Label htmlFor="email" className="text-xs font-medium">Work email</Label>
+          <Input id="email" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required className="h-11" />
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link href="/login" className="text-xs text-primary hover:underline">
-              Forgot password?
-            </Link>
+            <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+            <Link href="/login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Forgot?</Link>
           </div>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
+          <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required className="h-11" />
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        <Button type="submit" className="w-full h-11" disabled={loading}>
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading ? "Signing in..." : "Sign in"}
         </Button>
       </form>
@@ -95,20 +72,18 @@ export default function LoginPage() {
       </div>
 
       <div className="space-y-2">
-        <Button variant="outline" className="w-full" onClick={magicLink} disabled={loading}>
-          <Mail className="h-4 w-4" /> Continue with magic link
+        <Button variant="outline" className="w-full h-10" onClick={magicLink} disabled={loading}>
+          <Mail className="h-4 w-4" /> Magic link
         </Button>
-        <Button variant="outline" className="w-full" disabled={loading}>
-          <Github className="h-4 w-4" /> Continue with GitHub
+        <Button variant="outline" className="w-full h-10" disabled={loading}>
+          <Github className="h-4 w-4" /> GitHub
         </Button>
       </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New to AutoFlow?{" "}
-        <Link href="/register" className="font-medium text-primary hover:underline">
-          Create an account
-        </Link>
+        <Link href="/register" className="font-medium text-foreground hover:underline">Create an account</Link>
       </p>
     </motion.div>
   );
-}
+}

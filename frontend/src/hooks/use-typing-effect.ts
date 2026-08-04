@@ -2,12 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export function useTypingEffect(text: string, speed = 16) {
+interface UseTypingEffectOptions {
+  enabled?: boolean;
+  speed?: number;
+}
+
+export function useTypingEffect(
+  text: string,
+  options?: UseTypingEffectOptions | number,
+) {
+  // Support both old (number) and new (options object) signatures
+  const speed = typeof options === "number" ? options : (options?.speed ?? 16);
+  const enabled = typeof options === "number" ? true : (options?.enabled ?? true);
+
   const [display, setDisplay] = useState("");
   const [done, setDone] = useState(false);
   const idx = useRef(0);
 
   useEffect(() => {
+    if (!enabled) {
+      setDisplay(text);
+      setDone(true);
+      return;
+    }
     idx.current = 0;
     setDisplay("");
     setDone(false);
@@ -20,7 +37,7 @@ export function useTypingEffect(text: string, speed = 16) {
       }
     }, speed);
     return () => clearInterval(interval);
-  }, [text, speed]);
+  }, [text, speed, enabled]);
 
   return { display, done };
 }

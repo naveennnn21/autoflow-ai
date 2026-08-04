@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Github, Loader2, Sparkles } from "lucide-react";
+import { Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,50 +31,31 @@ export default function RegisterPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 200, damping: 24 }}
-      className="relative rounded-2xl border border-border/70 bg-card/80 p-8 shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.05),0_24px_80px_-24px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div aria-hidden className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-      <div className="mb-6 space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your workspace</h1>
-        <p className="text-sm text-muted-foreground">Start automating in minutes. Free for 14 days.</p>
+      <div className="mb-8 text-center">
+        <p className="text-section text-balance leading-[1.05]">Build something automatic.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Create your workspace. Free forever plan included.</p>
       </div>
 
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="name">Full name</Label>
-          <Input id="name" placeholder="Ada Lovelace" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Label htmlFor="name" className="text-xs font-medium">Full name</Label>
+          <Input id="name" placeholder="Ada Lovelace" value={name} onChange={(e) => setName(e.target.value)} required className="h-11" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="email">Work email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
+          <Label htmlFor="email" className="text-xs font-medium">Work email</Label>
+          <Input id="email" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required className="h-11" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="8+ characters"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            minLength={8}
-            required
-          />
+          <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+          <Input id="password" type="password" placeholder="8+ characters" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} required className="h-11" />
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {loading ? "Creating workspace..." : "Create workspace"}
+        <Button type="submit" className="w-full h-11" disabled={loading}>
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? "Creating..." : "Create workspace"}
         </Button>
       </form>
 
@@ -84,16 +65,14 @@ export default function RegisterPage() {
         <Separator className="flex-1" />
       </div>
 
-      <Button variant="outline" className="w-full" disabled={loading}>
+      <Button variant="outline" className="w-full h-10" disabled={loading}>
         <Github className="h-4 w-4" /> Continue with GitHub
       </Button>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
-          Sign in
-        </Link>
+        <Link href="/login" className="font-medium text-foreground hover:underline">Sign in</Link>
       </p>
     </motion.div>
   );
-}
+}

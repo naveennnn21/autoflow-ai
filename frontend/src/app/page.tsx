@@ -1,6 +1,8 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
-import { Features, Integrations } from "@/components/landing/sections";
+import { BentoSection } from "@/components/landing/bento-section";
+import { Storytelling } from "@/components/landing/storytelling";
+import { ConnectorsShowcase } from "@/components/landing/connectors-showcase";
 import { Testimonials, Pricing, Faq } from "@/components/landing/social";
 import { Footer } from "@/components/landing/footer";
 
@@ -10,8 +12,11 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
-        <Features />
-        <Integrations />
+        <BentoSection />
+        <Storytelling />
+        <div className="section-light">
+          <ConnectorsShowcase />
+        </div>
         <Testimonials />
         <Pricing />
         <Faq />
