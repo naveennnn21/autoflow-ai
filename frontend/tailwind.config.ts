@@ -117,6 +117,14 @@ const config: Config = {
         glow: "0 0 40px -8px hsl(var(--primary) / 0.5)",
         "glow-cyan": "0 0 40px -8px hsl(var(--info) / 0.5)",
         "glow-accent": "0 0 40px -8px hsl(var(--accent) / 0.5)",
+        "glow-success": "0 0 40px -8px hsl(var(--success) / 0.5)",
+        "glow-warning": "0 0 40px -8px hsl(var(--warning) / 0.5)",
+        "glow-destructive": "0 0 40px -8px hsl(var(--destructive) / 0.5)",
+        "glow-soft": "0 0 48px -12px hsl(var(--primary) / 0.35)",
+        "glow-ring": "0 0 0 1px hsl(var(--ring) / 0.6), 0 0 32px -4px hsl(var(--ring) / 0.45)",
+        "elevation-1": "var(--elevation-1)",
+        "elevation-2": "var(--elevation-2)",
+        "elevation-3": "var(--elevation-3)",
         soft: "0 8px 40px -12px rgba(0, 0, 0, 0.4)",
         "soft-lg": "0 24px 80px -24px rgba(0, 0, 0, 0.5)",
         "inner-glow": "inset 0 1px 0 0 hsl(var(--foreground) / 0.06)",
@@ -233,6 +241,14 @@ const config: Config = {
           "97%": { opacity: "0.6" },
           "98%": { opacity: "1" },
         },
+        fog: {
+          "0%, 100%": { transform: "translate3d(-4%, -2%, 0) scale(1)" },
+          "50%": { transform: "translate3d(5%, 3%, 0) scale(1.08)" },
+        },
+        "fog-reverse": {
+          "0%, 100%": { transform: "translate3d(4%, 2%, 0) scale(1.06)" },
+          "50%": { transform: "translate3d(-5%, -3%, 0) scale(0.98)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -260,6 +276,8 @@ const config: Config = {
         wiggle: "wiggle 5s ease-in-out infinite",
         "line-grow": "line-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both",
         flicker: "flicker 6s linear infinite",
+        fog: "fog 36s ease-in-out infinite",
+        "fog-reverse": "fog-reverse 48s ease-in-out infinite",
       },
       transitionTimingFunction: {
         spring: "cubic-bezier(0.22, 1, 0.36, 1)",

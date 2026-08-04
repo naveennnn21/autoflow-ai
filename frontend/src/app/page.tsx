@@ -1,3 +1,4 @@
+import { BackgroundEngine } from "@/components/motion/background-engine";
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
 import { BentoSection } from "@/components/landing/bento-section";
@@ -8,7 +9,8 @@ import { Footer } from "@/components/landing/footer";
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
+    <div className="relative min-h-screen overflow-x-clip">
+      <BackgroundEngine variant="atmospheric" className="fixed inset-0 -z-10" />
       <Navbar />
       <main>
         <Hero />

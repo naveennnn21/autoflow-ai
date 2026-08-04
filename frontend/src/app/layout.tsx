@@ -3,6 +3,7 @@ import "@fontsource-variable/rubik";
 import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 import "@xyflow/react/dist/style.css";
+import { CustomCursor } from "@/components/motion/custom-cursor";
 import { Providers } from "@/providers/providers";
 
 export const metadata: Metadata = {
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
+        <CustomCursor />
         <Providers>{children}</Providers>
       </body>
     </html>

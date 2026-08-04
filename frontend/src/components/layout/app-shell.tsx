@@ -9,6 +9,7 @@ import { useSession } from "@/stores/session";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "./command-palette";
+import { BackgroundEngine } from "@/components/motion/background-engine";
 import { CursorGlow } from "@/components/motion/cursor-glow";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { PageTransition } from "@/components/motion/page-transition";
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative flex min-h-screen">
+      <BackgroundEngine variant="minimal" className="fixed inset-0 -z-10" />
       <CursorGlow />
       <ScrollProgress />
       <Sidebar />

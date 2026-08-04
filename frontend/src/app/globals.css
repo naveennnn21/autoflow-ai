@@ -39,6 +39,11 @@
 
     /* Muted ink used for tertiary text (#778399) */
     --muted-2: 218 14% 53%;
+
+    /* Elevation (ambient depth) */
+    --elevation-1: 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+    --elevation-2: 0 16px 48px -16px rgba(0, 0, 0, 0.55);
+    --elevation-3: 0 32px 96px -24px rgba(0, 0, 0, 0.65);
   }
 
   .light {
@@ -71,6 +76,10 @@
     --input: 216 25% 88%;
     --ring: 232 90% 62%;
     --muted-2: 218 14% 42%;
+
+    --elevation-1: 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+    --elevation-2: 0 16px 48px -16px rgba(15, 23, 42, 0.16);
+    --elevation-3: 0 32px 96px -24px rgba(15, 23, 42, 0.2);
   }
 
   * {
@@ -272,6 +281,15 @@
   .link-underline:hover {
     background-size: 100% 1px;
   }
+
+  /* ---------- Custom cursor ---------- */
+  /* Native pointer is hidden only while the custom cursor is active.
+     The class is toggled at runtime and never applied on touch devices
+     or under prefers-reduced-motion, so the native cursor stays usable. */
+  html.has-custom-cursor,
+  html.has-custom-cursor * {
+    cursor: none !important;
+  }
 }
 
 @layer utilities {
@@ -312,7 +330,9 @@
   .animate-float-slow,
   .animate-drift,
   .animate-orbit,
-  .animate-marquee {
+  .animate-marquee,
+  .animate-fog,
+  .animate-fog-reverse {
     animation: none !important;
   }
 }

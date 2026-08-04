@@ -1,0 +1,23 @@
+<!DOCTYPE html><html><body>
+<canvas id="c" width="1440" height="900"></canvas>
+<script>
+const img = new Image();
+img.onload = () => {
+  const c = document.getElementById('c');
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, 1440, 900);
+  const data = ctx.getImageData(0, 0, 1440, 900).data;
+  // Sample a grid and report distinct colors with counts
+  const colors = {};
+  for (let y = 0; y < 900; y += 10) {
+    for (let x = 0; x < 1440; x += 10) {
+      const i = (y * 1440 + x) * 4;
+      const key = data[i] + ',' + data[i+1] + ',' + data[i+2];
+      colors[key] = (colors[key] || 0) + 1;
+    }
+  }
+  const sorted = Object.entries(colors).sort((a,b) => b[1]-a[1]);
+  document.body.innerHTML = 'total distinct: ' + Object.keys(colors).length + '<br>' + sorted.slice(0, 25).map(([k,v]) => k + ' x' + v).join('<br>');
+};
+img.src = 'file:///C:/Users/NAVEEN~1/AppData/Local/Temp/cdp_out/step02.png';
+</script></body></html>
