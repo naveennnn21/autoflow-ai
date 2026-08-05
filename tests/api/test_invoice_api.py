@@ -65,11 +65,6 @@ class TestInvoiceAPI:
             resp = await client.get("/api/v1/invoice", headers=auth_headers)
             assert "X-Org-Id" in auth_headers
 
-        """Test restoring a soft-deleted invoice."""
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.post(f"/api/v1/invoice/{uuid.uuid4()}/restore", headers=auth_headers)
-            assert resp.status_code in (200, 401, 403, 404)
-
     @pytest.mark.asyncio
     async def test_count_permissions(self, auth_headers):
         """Test count endpoint with different permissions."""

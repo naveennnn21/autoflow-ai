@@ -117,11 +117,6 @@ async def restore_marketplace_item(
     if not obj:
         raise HTTPException(status_code=404, detail="MarketplaceItem not found")
     return obj
-    svc = MarketplaceItemService(MarketplaceItemRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
-    if not result:
-        raise HTTPException(status_code=404, detail="MarketplaceItem not found")
-    return None
 @router.get("/count",
     summary="Count marketplace_items", operation_id="count_marketplace_items")
 async def count_marketplace_items(

@@ -117,11 +117,6 @@ async def restore_organization(
     if not obj:
         raise HTTPException(status_code=404, detail="Organization not found")
     return obj
-    svc = OrganizationService(OrganizationRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Organization not found")
-    return None
 @router.get("/count",
     summary="Count organizations", operation_id="count_organizations")
 async def count_organizations(

@@ -58,11 +58,6 @@ class TestOAuthTokenAPI:
             resp = await client.get("/api/v1/oauth_token/count", headers=auth_headers)
             assert resp.status_code in (200, 401, 403)
 
-        """Test restoring a soft-deleted oauth_token."""
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.post(f"/api/v1/oauth_token/{uuid.uuid4()}/restore", headers=auth_headers)
-            assert resp.status_code in (200, 401, 403, 404)
-
     @pytest.mark.asyncio
     async def test_count_permissions(self, auth_headers):
         """Test count endpoint with different permissions."""

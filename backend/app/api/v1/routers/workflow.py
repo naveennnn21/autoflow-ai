@@ -128,11 +128,6 @@ async def restore_workflow(
     if not obj:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return obj
-    svc = WorkflowService(WorkflowRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Workflow not found")
-    return None
 @router.get("/count",
     summary="Count workflows", operation_id="count_workflows")
 async def count_workflows(

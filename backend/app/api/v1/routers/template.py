@@ -128,11 +128,6 @@ async def restore_template(
     if not obj:
         raise HTTPException(status_code=404, detail="Template not found")
     return obj
-    svc = TemplateService(TemplateRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return None
 @router.get("/count",
     summary="Count templates", operation_id="count_templates")
 async def count_templates(

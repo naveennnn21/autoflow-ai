@@ -64,8 +64,8 @@ async def get_current_user(
     x_user_id: Optional[str] = Header(None),
     x_org_id: Optional[str] = Header(None),
 ) -> CurrentUser:
-    """Extract current user from JWT or dev header."""
-    if x_user_id:
+    """Extract current user from JWT or dev header (debug only)."""
+    if x_user_id and settings.debug:
         return CurrentUser(
             user_id=UUID(x_user_id) if x_user_id else None,
             org_id=UUID(x_org_id) if x_org_id else None,
@@ -101,7 +101,7 @@ async def get_current_organization(
     """Get current organization ID from user context or header."""
     if current_user.organization_id:
         return current_user.organization_id
-    if x_org_id:
+    if x_org_id and settings.debug:
         try:
             return UUID(x_org_id)
         except ValueError:

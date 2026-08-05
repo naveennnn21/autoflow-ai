@@ -117,11 +117,6 @@ async def restore_user(
     if not obj:
         raise HTTPException(status_code=404, detail="User not found")
     return obj
-    svc = UserService(UserRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
-    if not result:
-        raise HTTPException(status_code=404, detail="User not found")
-    return None
 @router.get("/count",
     summary="Count users", operation_id="count_users")
 async def count_users(

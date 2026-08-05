@@ -1,6 +1,7 @@
 """APIGenerator - Produces FastAPI REST API layer from metadata."""
 
 from typing import Any, Dict, List, Optional
+from pathlib import Path
 from scripts.generators.common.intermediate_model import (
     APIDef, APIEndpointDef, EntityDef, MetadataModel,
 )
@@ -240,15 +241,15 @@ def _build_entity_router(entity):
             out.append('    org_id: Any = Depends(get_current_organization),')
         out.append('):')
         out.append(f'    """Hard delete a {en}."""')
-    rbac_scopes = ', '.join(f'"{s}"' for s in delete_scope) if delete_scope else ''
-    if rbac_scopes:
-        out.append('    if not current_user.has_any_scope([' + rbac_scopes + ']):')
-        out.append('        raise HTTPException(status_code=403, detail="Insufficient permissions")')
-    out.append(f'    svc = {en}Service({en}Repository(db))')
-    out.append('    result = await svc.delete(id, hard=True, actor_id=current_user.id)')
-    out.append('    if not result:')
-    out.append(f'        raise HTTPException(status_code=404, detail="{en} not found")')
-    out.append('    return None')
+        rbac_scopes = ', '.join(f'"{s}"' for s in delete_scope) if delete_scope else ''
+        if rbac_scopes:
+            out.append('    if not current_user.has_any_scope([' + rbac_scopes + ']):')
+            out.append('        raise HTTPException(status_code=403, detail="Insufficient permissions")')
+        out.append(f'    svc = {en}Service({en}Repository(db))')
+        out.append('    result = await svc.delete(id, hard=True, actor_id=current_user.id)')
+        out.append('    if not result:')
+        out.append(f'        raise HTTPException(status_code=404, detail="{en} not found")')
+        out.append('    return None')
     # ========== COUNT ==========
     out.append(f'@router.get("/count",')
     out.append(f'    summary="Count {sname}s", operation_id="count_{sname}s")')
@@ -338,8 +339,8 @@ def _build_deps():
     out.append('    x_user_id: Optional[str] = Header(None),')
     out.append('    x_org_id: Optional[str] = Header(None),')
     out.append(') -> CurrentUser:')
-    out.append('    """Extract current user from JWT or dev header."""')
-    out.append('    if x_user_id:')
+    out.append('    """Extract current user from JWT or dev header (debug only)."""')
+    out.append('    if x_user_id and settings.debug:')
     out.append('        return CurrentUser(')
     out.append('            user_id=UUID(x_user_id) if x_user_id else None,')
     out.append('            org_id=UUID(x_org_id) if x_org_id else None,')
@@ -375,7 +376,7 @@ def _build_deps():
     out.append('    """Get current organization ID from user context or header."""')
     out.append('    if current_user.organization_id:')
     out.append('        return current_user.organization_id')
-    out.append('    if x_org_id:')
+    out.append('    if x_org_id and settings.debug:')
     out.append('        try:')
     out.append('            return UUID(x_org_id)')
     out.append('        except ValueError:')
@@ -797,11 +798,11 @@ def _build_api_test(entity):
     if has_soft:
         out.append('    @pytest.mark.asyncio')
         out.append('    async def test_restore_entity(self, auth_headers):')
-    out.append(f'        """Test restoring a soft-deleted {sname}."""')
-    out.append('        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:')
-    out.append(f'            resp = await client.post(f"/api/v1/{sname}/{{uuid.uuid4()}}/restore", headers=auth_headers)')
-    out.append('            assert resp.status_code in (200, 401, 403, 404)')
-    out.append('')
+        out.append(f'        """Test restoring a soft-deleted {sname}."""')
+        out.append('        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:')
+        out.append(f'            resp = await client.post(f"/api/v1/{sname}/{{uuid.uuid4()}}/restore", headers=auth_headers)')
+        out.append('            assert resp.status_code in (200, 401, 403, 404)')
+        out.append('')
     out.append('    @pytest.mark.asyncio')
     out.append('    async def test_count_permissions(self, auth_headers):')
     out.append(f'        """Test count endpoint with different permissions."""')
@@ -852,6 +853,9 @@ class APIGenerator:
             w.write(path, content, force=force)
             results.append(path)
 
+        # Custom routers are hand-maintained production implementations; only
+        # scaffold them when missing so regeneration never clobbers real code
+        # with placeholder stubs (e.g. auth.py login returning a fake token).
         cust = [
             ("backend/app/api/v1/routers/health.py", _build_health_router()),
             ("backend/app/api/v1/routers/auth.py", _build_auth_router(model.apis.get("Auth", None))),
@@ -859,6 +863,10 @@ class APIGenerator:
             ("backend/app/api/v1/routers/monitoring.py", _build_monitoring_router(model.apis.get("Monitoring", None))),
         ]
         for path, fn in cust:
+            if (w.root / path).exists():
+                w.logs.append(f"SKIP (custom): {path}")
+                w.skipped.add(path)
+                continue
             w.write(path, fn, force=force)
             results.append(path)
 

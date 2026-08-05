@@ -128,11 +128,6 @@ async def restore_subscription(
     if not obj:
         raise HTTPException(status_code=404, detail="Subscription not found")
     return obj
-    svc = SubscriptionService(SubscriptionRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Subscription not found")
-    return None
 @router.get("/count",
     summary="Count subscriptions", operation_id="count_subscriptions")
 async def count_subscriptions(
