@@ -1,4 +1,8 @@
+"""AutoFlow AI - Workflow event handler (generated from metadata).
 
+Tracks workflow execution outcomes and suggests retries for failed
+executions. Import-safe in-memory state.
+"""
 import logging
 from typing import Dict, List
 

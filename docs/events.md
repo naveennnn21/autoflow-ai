@@ -22,9 +22,11 @@ replay()/retry() re-dispatch persisted or dead-lettered events
 |-------|---------|------------|---------|----------|
 | `ai.workflow_generated` | 1 | no | - | `analytics`, `audit` |
 | `ai.workflow_optimized` | 1 | no | - | `analytics`, `audit` |
+| `connector.action_executed` | 1 | no | `connector`, `action`, `ok`, `duration_ms` | `connector`, `analytics` |
 | `connector.connected` | 1 | no | - | `connector`, `analytics` |
 | `connector.disconnected` | 1 | no | - | `connector`, `analytics` |
 | `connector.error` | 1 | no | - | `connector`, `notification`, `webhook` |
+| `connector.trigger_fired` | 1 | no | `connector`, `trigger`, `event_count` | `connector`, `analytics` |
 | `execution.retried` | 1 | no | `workflow_id`, `execution_id`, `attempt`, `max_attempts` | `workflow`, `audit` |
 | `invoice.paid` | 1 | yes | - | `notification`, `analytics`, `audit` |
 | `notification.failed` | 1 | no | `notification_id`, `user_id`, `channel`, `error` | `notification`, `analytics` |

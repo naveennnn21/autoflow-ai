@@ -1,0 +1,23 @@
+# AutoFlow AI - Backend runtime dependencies
+# Generated from the audited environment (Python 3.13 dev, 3.12 target for Docker).
+
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+sqlalchemy==2.0.41
+pydantic==2.11.4
+pydantic-settings==2.9.1
+asyncpg==0.30.0
+redis==5.2.1
+python-jose==3.5.0
+passlib==1.7.4
+# bcrypt is pinned <4.1: passlib 1.7.4 is incompatible with bcrypt>=4.1
+# (raises "password cannot be longer than 72 bytes" on backend init).
+bcrypt==4.0.1
+cachetools==6.1.0
+celery==5.6.3
+sentry-sdk>=2.0.0
+
+# Test dependencies
+pytest==8.4.1
+pytest-asyncio==1.0.0
+httpx==0.28.1

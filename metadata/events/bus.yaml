@@ -50,5 +50,7 @@ handlers:
   connector.connected: [connector, analytics]
   connector.disconnected: [connector, analytics]
   connector.error: [connector, notification, webhook]
+  connector.action_executed: [connector, analytics]
+  connector.trigger_fired: [connector, analytics]
   ai.workflow_generated: [analytics, audit]
   ai.workflow_optimized: [analytics, audit]
