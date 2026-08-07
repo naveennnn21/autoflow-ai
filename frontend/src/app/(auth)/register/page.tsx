@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const login = useSession((s) => s.login);
+  const register = useSession((s) => s.register);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -24,9 +24,16 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!name || !email || !password) return;
     setLoading(true);
-    await login(email);
-    toast.success("Workspace created", { description: `Welcome, ${name}!` });
-    router.push("/dashboard");
+    try {
+      await register(name, email, password);
+      toast.success("Workspace created", { description: `Welcome, ${name}!` });
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error("Couldn't create your workspace", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+      setLoading(false);
+    }
   };
 
   return (
@@ -65,7 +72,16 @@ export default function RegisterPage() {
         <Separator className="flex-1" />
       </div>
 
-      <Button variant="outline" className="w-full h-10" disabled={loading}>
+      <Button
+        variant="outline"
+        className="w-full h-10"
+        disabled={loading}
+        onClick={() =>
+          toast.info("GitHub sign-up is not configured yet", {
+            description: "Use email and password to create your account.",
+          })
+        }
+      >
         <Github className="h-4 w-4" /> Continue with GitHub
       </Button>
 
@@ -75,4 +91,4 @@ export default function RegisterPage() {
       </p>
     </motion.div>
   );
-}
+}

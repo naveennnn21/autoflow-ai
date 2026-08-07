@@ -6,16 +6,30 @@ import { Command as CommandPrimitive } from "cmdk";
 import { Search, CornerDownLeft } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useCommand } from "@/stores/command";
+import { useWorkflows } from "@/stores/workflows";
 import { navGroups } from "@/lib/navigation";
 import { Icon } from "@/components/shared/icons";
-import { workflows } from "@/lib/mock-workflows";
-import { connectors } from "@/lib/mock-connectors";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/api/keys";
+import { connectorsApi } from "@/lib/api/connectors";
 
 const Command = CommandPrimitive;
 
 export function CommandPalette() {
   const router = useRouter();
   const { open, setOpen } = useCommand();
+  const workflows = useWorkflows((s) => s.workflows);
+  const load = useWorkflows((s) => s.load);
+
+  const { data } = useQuery({
+    queryKey: queryKeys.connectors,
+    queryFn: () => connectorsApi.list({ page: 1, page_size: 50 }),
+  });
+  const connectors = data?.items ?? [];
+
+  React.useEffect(() => {
+    if (open) void load();
+  }, [open, load]);
 
   const run = (fn: () => void) => {
     setOpen(false);
@@ -68,6 +82,15 @@ export function CommandPalette() {
                   <span>{wf.name}</span>
                 </Command.Item>
               ))}
+              {workflows.length === 0 && (
+                <Command.Item
+                  value="workflow none"
+                  disabled
+                  className="cursor-default px-3 py-2 text-sm text-muted-foreground"
+                >
+                  No workflows yet
+                </Command.Item>
+              )}
             </Command.Group>
             <Command.Group heading="Connectors">
               {connectors.slice(0, 5).map((c) => (
@@ -82,6 +105,15 @@ export function CommandPalette() {
                   <span className="ml-auto text-xs text-muted-foreground">{c.category}</span>
                 </Command.Item>
               ))}
+              {connectors.length === 0 && (
+                <Command.Item
+                  value="connector none"
+                  disabled
+                  className="cursor-default px-3 py-2 text-sm text-muted-foreground"
+                >
+                  No connectors registered
+                </Command.Item>
+              )}
             </Command.Group>
             <div className="mt-2 flex items-center gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground">
               <kbd className="rounded border border-border px-1"><CornerDownLeft className="h-3 w-3" /></kbd>

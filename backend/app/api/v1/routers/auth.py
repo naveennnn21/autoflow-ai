@@ -13,13 +13,16 @@ security utilities (bcrypt password hashing + HS256 JWT tokens).
 - oauth returns 501 until provider client credentials are configured.
 """
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import CurrentUser, get_current_user
 from app.core.database import get_db
@@ -30,7 +33,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models.enums import UserStatus
+from app.models.enums import OrganizationMemberRole, UserStatus
 from app.models.user import User
 from app.repositories.user import UserRepository
 
@@ -68,12 +71,90 @@ def _user_payload(user: User) -> Dict[str, Any]:
     }
 
 
-def _token_response(user: User) -> Dict[str, Any]:
+def _slugify(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")[:40]
+
+
+async def _resolve_org(db: AsyncSession, user_id: Any) -> Optional[Dict[str, Any]]:
+    """Return the user's first organization membership (org + role).
+
+    Phase 1 compatibility: embeds the tenant context into tokens and
+    auth responses so the frontend can scope every request with
+    X-Org-Id / the JWT org claim.
+    """
+    from app.models.organization_member import OrganizationMember
+
+    stmt = (
+        select(OrganizationMember)
+        .options(selectinload(OrganizationMember.organization))
+        .where(OrganizationMember.user_id == user_id)
+        .order_by(OrganizationMember.joined_at)
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    member = result.scalar_one_or_none()
+    if member is None or member.organization is None:
+        return None
+    org = member.organization
     return {
-        "access_token": create_access_token(str(user.id)),
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "role": member.role.value if isinstance(member.role, OrganizationMemberRole) else str(member.role),
+    }
+
+
+async def _create_default_org(db: AsyncSession, user: User) -> Dict[str, Any]:
+    """Create a personal workspace for a freshly registered user.
+
+    Phase 1 compatibility fix: registration must yield a usable tenant
+    (organizations are NOT NULL on workflows/executions/api_keys), so
+    every new user gets an owned workspace + owner membership.
+    """
+    from app.models.enums import OrganizationMemberRole
+    from app.models.organization_member import OrganizationMember
+    from app.repositories.organization import OrganizationRepository
+
+    org_repo = OrganizationRepository(db)
+    base_slug = _slugify((user.email or "").split("@")[0]) or "workspace"
+    slug = base_slug
+    counter = 1
+    while await org_repo.get_by_field("slug", slug) is not None:
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    display_name = (user.full_name or "My").strip()
+    org = await org_repo.create({
+        "name": f"{display_name}'s Workspace",
+        "slug": slug,
+        "description": "Personal workspace",
+        "is_active": True,
+        "tier": "free",
+        "settings": {
+            "notifications": {"failures": True, "digest": False},
+            "preferences": {"reduce_motion": False, "confirm_destructive": True},
+        },
+    })
+    db.add(OrganizationMember(
+        organization_id=org.id,
+        user_id=user.id,
+        role=OrganizationMemberRole.OWNER,
+        joined_at=datetime.now(timezone.utc),
+    ))
+    await db.commit()
+    return {"id": str(org.id), "name": org.name, "slug": org.slug, "role": "owner"}
+
+
+def _token_response(user: User, org: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    extra: Dict[str, Any] = {}
+    if org:
+        extra["org_id"] = org["id"]
+        extra["role"] = org.get("role", "member")
+    return {
+        "access_token": create_access_token(str(user.id), extra_claims=extra or None),
         "refresh_token": create_refresh_token(str(user.id)),
         "token_type": "bearer",
         "user": _user_payload(user),
+        "org": org,
     }
 
 
@@ -137,7 +218,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
         "is_superuser": False,
         "is_verified": False,
     })
-    return _token_response(user)
+    org = await _create_default_org(db, user)
+    return _token_response(user, org=org)
 
 
 @router.post("/login", summary="Authenticate user and return JWT tokens")
@@ -159,7 +241,8 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Dict[
             detail="Account suspended",
         )
     await repo.update(user.id, {"last_login_at": datetime.now(timezone.utc)})
-    return _token_response(user)
+    org = await _resolve_org(db, user.id)
+    return _token_response(user, org=org)
 
 
 @router.post("/refresh", summary="Refresh access token")
@@ -205,10 +288,15 @@ async def me(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Return the authenticated user's profile."""
+    """Return the authenticated user's profile (plus tenant context)."""
     repo = UserRepository(db)
     user = _user_from_id(repo, current_user.id)
-    return _user_payload(user)
+    payload = _user_payload(user)
+    org = await _resolve_org(db, user.id)
+    if org:
+        payload["org"] = org
+        payload["role"] = org["role"]
+    return payload
 
 
 @router.post("/password-change", summary="Change current password")

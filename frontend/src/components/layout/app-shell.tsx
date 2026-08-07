@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { useHotkey } from "@/hooks/use-keyboard";
 import { useCommand } from "@/stores/command";
-import { useSession } from "@/stores/session";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "./command-palette";
@@ -17,16 +15,11 @@ import { PageTransition } from "@/components/motion/page-transition";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { toggle } = useCommand();
-  const hydrate = useSession((s) => s.hydrate);
 
   useHotkey("mod+k", (e) => {
     e.preventDefault();
     toggle();
   });
-
-  useEffect(() => {
-    void hydrate();
-  }, [hydrate]);
 
   return (
     <div className="relative flex min-h-screen">

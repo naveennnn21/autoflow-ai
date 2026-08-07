@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FadeIn, StaggerGroup, StaggerItem } from "@/components/motion/fade-in";
-import { testimonials, pricingTiers, faqItems } from "@/lib/mock-content";
+import { testimonials, pricingTiers, faqItems } from "@/lib/content";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Testimonials() {

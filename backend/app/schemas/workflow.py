@@ -24,14 +24,14 @@ class WorkflowResponse(BaseModel):
     id: str
     created_at: datetime
     updated_at: datetime
-    organization_id: str
-    project_id: str
+    organization_id: Optional[str] = None
+    project_id: Optional[str] = None
     name: str
-    description: str
-    status: WorkflowStatus
-    version: int
-    config: dict
-    deleted_at: datetime
+    description: Optional[str] = None
+    status: Optional[WorkflowStatus] = None
+    version: Optional[int] = None
+    config: Optional[dict] = None
+    deleted_at: Optional[datetime] = None
 
 
 class WorkflowPublic(BaseModel):

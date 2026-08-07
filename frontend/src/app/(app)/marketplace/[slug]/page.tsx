@@ -3,7 +3,7 @@
 import * as React from "react";
 import { notFound } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Plug, Star } from "lucide-react";
+import { ArrowLeft, Check, Plug, RefreshCw, Star } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icon } from "@/components/shared/icons";
 import { ConnectorHealthBadge } from "@/components/shared/status-badge";
-import { connectors } from "@/lib/mock-connectors";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Skeleton } from "@/components/shared/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/api/keys";
+import { connectorsApi } from "@/lib/api/connectors";
 import { formatCompact } from "@/lib/utils";
 
 export default function ConnectorDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -22,14 +26,54 @@ export default function ConnectorDetailPage({ params }: { params: Promise<{ slug
     void params.then((p) => setSlug(p.slug));
   }, [params]);
 
-  if (!slug) return null;
-  const connector = connectors.find((c) => c.slug === slug);
-  if (!connector) notFound();
+  const { data: connector, isLoading, isError, refetch } = useQuery({
+    queryKey: queryKeys.connector(slug ?? ""),
+    queryFn: () => connectorsApi.get(slug ?? ""),
+    enabled: !!slug,
+  });
+
+  if (isError && !isLoading) {
+    return (
+      <EmptyState
+        title="Couldn't load this connector"
+        description="The connector registry API is unreachable or this connector does not exist."
+        action={
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => void refetch()}>
+            <RefreshCw className="h-4 w-4" /> Retry
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (isLoading || !slug) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-40" />
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-16 w-16 rounded-2xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-full max-w-xl" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  if (!connector) {
+    notFound();
+  }
 
   const install = () => {
     setInstalled(true);
     toast.success(`${connector.name} connected`, {
-      description: `Authorized scopes: ${connector.scopes.join(", ")}`,
+      description: `Scopes requested: ${connector.scopes.slice(0, 3).join(", ") || "read-only"}`,
     });
   };
 
@@ -54,9 +98,11 @@ export default function ConnectorDetailPage({ params }: { params: Promise<{ slug
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-semibold tracking-tight">{connector.name}</h1>
-                <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {connector.rating}
-                </span>
+                {connector.rating > 0 && (
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {connector.rating}
+                  </span>
+                )}
                 {connector.verified && <Badge variant="success">Verified</Badge>}
                 <ConnectorHealthBadge health={connector.health} />
               </div>
@@ -65,7 +111,9 @@ export default function ConnectorDetailPage({ params }: { params: Promise<{ slug
                 <Badge variant="secondary">{connector.category}</Badge>
                 <Badge variant="secondary">{connector.auth}</Badge>
                 <Badge variant="secondary">Rate limit: {connector.rateLimit}</Badge>
-                <Badge variant="secondary">{formatCompact(connector.installs)} installs</Badge>
+                {connector.installs > 0 && (
+                  <Badge variant="secondary">{formatCompact(connector.installs)} installs</Badge>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -94,8 +142,8 @@ export default function ConnectorDetailPage({ params }: { params: Promise<{ slug
             {[
               { label: "Auth type", value: connector.auth.toUpperCase() },
               { label: "Rate limit", value: connector.rateLimit },
-              { label: "Installs", value: formatCompact(connector.installs) },
-              { label: "Rating", value: String(connector.rating) },
+              { label: "Installs", value: connector.installs > 0 ? formatCompact(connector.installs) : "—" },
+              { label: "Version", value: connector.version ?? "1.0.0" },
             ].map((s) => (
               <Card key={s.label}>
                 <CardContent className="p-4">
@@ -108,46 +156,58 @@ export default function ConnectorDetailPage({ params }: { params: Promise<{ slug
         </TabsContent>
 
         <TabsContent value="actions" className="mt-4 space-y-2">
-          {connector.actions.map((a) => (
-            <Card key={a.id}>
-              <CardContent className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <p className="text-sm font-medium">{a.name}</p>
-                  <p className="text-xs text-muted-foreground">{a.description}</p>
-                </div>
-                <div className="flex gap-1.5">
-                  <Badge variant="secondary" className="text-[10px]">{a.kind}</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {connector.actions.length === 0 ? (
+            <EmptyState title="No actions" description="This connector exposes triggers only." />
+          ) : (
+            connector.actions.map((a) => (
+              <Card key={a.id}>
+                <CardContent className="flex items-center justify-between gap-4 p-4">
+                  <div>
+                    <p className="text-sm font-medium">{a.name}</p>
+                    <p className="text-xs text-muted-foreground">{a.description}</p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Badge variant="secondary" className="text-[10px]">{a.kind}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
 
         <TabsContent value="triggers" className="mt-4 space-y-2">
-          {connector.triggers.map((t) => (
-            <Card key={t.id}>
-              <CardContent className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <p className="text-sm font-medium">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.description}</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px]">{t.kind}</Badge>
-              </CardContent>
-            </Card>
-          ))}
+          {connector.triggers.length === 0 ? (
+            <EmptyState title="No triggers" description="This connector can be started manually or via the API." />
+          ) : (
+            connector.triggers.map((t) => (
+              <Card key={t.id}>
+                <CardContent className="flex items-center justify-between gap-4 p-4">
+                  <div>
+                    <p className="text-sm font-medium">{t.name}</p>
+                    <p className="text-xs text-muted-foreground">{t.description}</p>
+                  </div>
+                  <Badge variant="secondary" className="text-[10px]">{t.kind}</Badge>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
 
         <TabsContent value="authentication" className="mt-4">
           <Card>
             <CardContent className="p-6">
-              <h3 className="font-semibold">OAuth 2.0 Authorization</h3>
+              <h3 className="font-semibold">Authentication — {connector.auth.toUpperCase()}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                AutoFlow manages the full OAuth lifecycle — authorization URL, token exchange, automatic refresh, and secure credential storage.
+                AutoFlow manages the full auth lifecycle — authorization URL, token exchange, automatic refresh, and secure credential storage.
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {connector.scopes.map((s) => (
-                  <Badge key={s} variant="outline" className="font-mono text-[11px]">{s}</Badge>
-                ))}
+                {connector.scopes.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">No scopes required for this connector.</span>
+                ) : (
+                  connector.scopes.map((s) => (
+                    <Badge key={s} variant="outline" className="font-mono text-[11px]">{s}</Badge>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

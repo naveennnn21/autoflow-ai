@@ -24,6 +24,8 @@ const config: Record<
   failed: { label: "Failed", variant: "destructive", icon: XCircle },
   rollback: { label: "Rollback", variant: "warning", icon: Undo2 },
   paused: { label: "Paused", variant: "secondary", icon: PauseCircle },
+  cancelled: { label: "Cancelled", variant: "default", icon: XCircle },
+  timeout: { label: "Timed out", variant: "destructive", icon: Clock },
 };
 
 export function StatusBadge({ status }: { status: ExecutionStatus }) {
@@ -37,12 +39,15 @@ export function StatusBadge({ status }: { status: ExecutionStatus }) {
   );
 }
 
-export function ConnectorHealthBadge({ health }: { health: "healthy" | "degraded" | "down" }) {
+export function ConnectorHealthBadge({ health }: { health: "healthy" | "degraded" | "down" | "unknown" }) {
   if (health === "healthy") return <Badge variant="success">Healthy</Badge>;
   if (health === "degraded") return <Badge variant="warning">Degraded</Badge>;
-  return (
-    <Badge variant="destructive">
-      <AlertTriangle className="h-3 w-3" /> Down
-    </Badge>
-  );
+  if (health === "down") {
+    return (
+      <Badge variant="destructive">
+        <AlertTriangle className="h-3 w-3" /> Down
+      </Badge>
+    );
+  }
+  return <Badge variant="secondary">Unknown</Badge>;
 }

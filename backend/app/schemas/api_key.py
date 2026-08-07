@@ -7,6 +7,9 @@ class APIKeyCreate(BaseModel):
     user_id: str
     name: str
     key_prefix: str
+    key_hash: Optional[str] = None
+    is_active: Optional[bool] = True
+    scopes: Optional[dict] = None
 
 
 class APIKeyUpdate(BaseModel):
@@ -21,11 +24,11 @@ class APIKeyResponse(BaseModel):
     id: str
     created_at: datetime
     updated_at: datetime
-    organization_id: str
-    user_id: str
+    organization_id: Optional[str] = None
+    user_id: Optional[str] = None
     name: str
     key_prefix: str
-    scopes: dict
+    scopes: Optional[dict] = None
 
 
 class APIKeyPublic(BaseModel):

@@ -24,12 +24,12 @@ class OrganizationResponse(BaseModel):
     updated_at: datetime
     name: str
     slug: str
-    logo_url: str
-    description: str
-    is_active: bool
-    tier: str
-    settings: dict
-    deleted_at: datetime
+    logo_url: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    tier: Optional[str] = None
+    settings: Optional[dict] = None
+    deleted_at: Optional[datetime] = None
 
 
 class OrganizationPublic(BaseModel):

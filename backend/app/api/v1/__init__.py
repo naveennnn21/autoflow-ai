@@ -19,6 +19,9 @@ from app.api.v1.routers.health import router as health_router
 from app.api.v1.routers.auth import router as auth_router
 from app.api.v1.routers.billing import router as billing_router
 from app.api.v1.routers.monitoring import router as monitoring_router
+from app.api.v1.routers.connectors import router as connectors_router
+from app.api.v1.routers.planner import router as planner_router
+from app.api.v1.routers.analytics import router as analytics_router
 
 
 # Create versioned router
@@ -43,3 +46,6 @@ api_v1_router.include_router(health_router)
 api_v1_router.include_router(auth_router)
 api_v1_router.include_router(billing_router)
 api_v1_router.include_router(monitoring_router)
+api_v1_router.include_router(connectors_router)
+api_v1_router.include_router(planner_router)
+api_v1_router.include_router(analytics_router)

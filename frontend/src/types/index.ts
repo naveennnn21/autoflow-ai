@@ -5,7 +5,9 @@ export type ExecutionStatus =
   | "success"
   | "failed"
   | "rollback"
-  | "paused";
+  | "paused"
+  | "cancelled"
+  | "timeout";
 
 export type NodeKind = "trigger" | "action" | "condition" | "ai" | "delay" | "webhook";
 
@@ -29,11 +31,13 @@ export interface WorkflowEdgeDef {
   animated?: boolean;
 }
 
+export type WorkflowStatus = "active" | "draft" | "paused" | "archived" | "failed";
+
 export interface Workflow {
   id: string;
   name: string;
   description: string;
-  status: "active" | "draft" | "paused" | "archived";
+  status: WorkflowStatus;
   trigger: string;
   connectorIds: string[];
   runs: number;
@@ -92,13 +96,20 @@ export interface Connector {
   actions: ConnectorAction[];
   triggers: ConnectorTrigger[];
   rateLimit: string;
-  health: "healthy" | "degraded" | "down";
+  health: "healthy" | "degraded" | "down" | "unknown";
   rating: number;
   installs: number;
   installed: boolean;
   verified?: boolean;
   popular?: boolean;
   tags?: string[];
+  version?: string;
+  capabilities?: {
+    actions: boolean;
+    triggers: boolean;
+    webhook: boolean;
+    polling: boolean;
+  };
 }
 
 export interface ActivityItem {
@@ -195,4 +206,186 @@ export interface Feature {
   title: string;
   description: string;
   gradient: string;
+}
+
+// ---------------------------------------------------------------------------
+// Backend API shapes
+// ---------------------------------------------------------------------------
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface AuthOrg {
+  id: string;
+  name: string;
+  slug: string;
+  role: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user: Record<string, unknown>;
+  org: AuthOrg | null;
+}
+
+export interface BackendUser {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  status?: string;
+  is_superuser?: boolean;
+  is_verified?: boolean;
+  created_at?: string | null;
+  org?: AuthOrg | null;
+  role?: string;
+}
+
+export interface BackendWorkflow {
+  id: string;
+  name: string;
+  description?: string | null;
+  status?: string | null;
+  version?: number | null;
+  config?: Record<string, unknown> | null;
+  error_count?: number | null;
+  last_run_at?: string | null;
+  organization_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface BackendExecution {
+  id: string;
+  workflow_id?: string | null;
+  organization_id?: string | null;
+  triggered_by?: string | null;
+  status?: string | null;
+  trigger_type?: string | null;
+  input_data?: Record<string, unknown> | null;
+  output_data?: Record<string, unknown> | null;
+  error_message?: string | null;
+  duration_ms?: number | null;
+  retry_attempt?: number | null;
+  cost?: number | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: Record<string, unknown>;
+  is_active?: boolean;
+  last_used_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url?: string | null;
+  description?: string | null;
+  is_active?: boolean | null;
+  tier?: string | null;
+  settings?: Record<string, unknown> | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message?: string | null;
+  type?: string | null;
+  channel?: string | null;
+  is_read?: boolean | null;
+  created_at?: string;
+}
+
+export interface PlannerPreview {
+  name: string;
+  description: string;
+  steps: { connector: string; action: string; label: string }[];
+  estimate: string;
+}
+
+export interface PlannerChatResponse {
+  reply: string;
+  clarifications: string[];
+  preview: PlannerPreview | null;
+  plan: Record<string, unknown> | null;
+  provider: string;
+  model: string;
+  latency_ms: number;
+  warnings: string[];
+  errors: string[];
+}
+
+export interface PlannerHealth {
+  status: string;
+  provider_configured: boolean;
+  catalog: { count: number; connectors: string[] };
+  metrics: Record<string, unknown>;
+}
+
+export interface SeriesPoint {
+  date: string;
+  runs: number;
+  success: number;
+  failed: number;
+  latencyMs: number;
+  cost: number;
+}
+
+export interface FailureBucket {
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export interface ConnectorHealthEntry {
+  name: string;
+  slug: string;
+  health: "healthy" | "degraded" | "down" | "unknown";
+}
+
+export interface TopWorkflowEntry {
+  workflowId: string;
+  name: string;
+  runs: number;
+  successRate: number;
+}
+
+export interface AnalyticsDashboard {
+  metrics: Metric[];
+  series: SeriesPoint[];
+  failureDistribution: FailureBucket[];
+  connectorHealth: ConnectorHealthEntry[];
+  healthSummary: Record<string, number>;
+  topWorkflows: TopWorkflowEntry[];
+  recentActivity: ActivityItem[];
+  recentExecutions: Execution[];
+  counts: {
+    workflows: number;
+    activeWorkflows: number;
+    connectors: number;
+    runs: number;
+    running: number;
+    retrying: number;
+    failed: number;
+  };
+  period: { key: string; days: number };
 }

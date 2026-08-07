@@ -137,12 +137,33 @@ export async function request<T>(
     cache: "no-store" as RequestCache,
   });
 
-  let res = await fetch(`${API_URL}${path}`, build(state.accessToken));
+  // One retry for transient failures (network blips, gateway 5xx).
+  const attempt = async (token: string | null, retried: boolean): Promise<Response> => {
+    const res = await fetch(`${API_URL}${path}`, build(token));
+    if (!retried && (res.status === 502 || res.status === 503 || res.status === 504)) {
+      await new Promise((r) => setTimeout(r, 400));
+      return attempt(token, true);
+    }
+    return res;
+  };
+
+  let res: Response;
+  try {
+    res = await attempt(state.accessToken, false);
+  } catch {
+    if (!auth) throw new ApiError(0, "Network request failed");
+    await new Promise((r) => setTimeout(r, 400));
+    try {
+      res = await attempt(state.accessToken, true);
+    } catch {
+      throw new ApiError(0, "Network request failed");
+    }
+  }
 
   if (res.status === 401 && auth) {
     const fresh = await refreshAccessToken();
     if (fresh) {
-      res = await fetch(`${API_URL}${path}`, build(fresh));
+      res = await attempt(fresh, true);
     } else {
       clearAuth();
       emitUnauthorized();
@@ -169,7 +190,7 @@ export async function request<T>(
 
 export function withQuery(
   path: string,
-  params: Record<string, unknown>,
+  params: object,
 ): string {
   const qs = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== "")

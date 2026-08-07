@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { motion } from "framer-motion";
-import { CheckCircle2, CircleDashed, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, CircleDashed, Clock, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Icon } from "@/components/shared/icons";
 import type { ExecutionStatus } from "@/types";
@@ -16,6 +16,8 @@ const statusStyles: Record<ExecutionStatus, { ring: string; glow: string; icon: 
   failed: { ring: "border-destructive/70", glow: "shadow-[0_0_28px_-6px_hsl(var(--destructive)/0.55)]", icon: XCircle },
   rollback: { ring: "border-warning/70", glow: "", icon: RefreshCw },
   paused: { ring: "border-border/70", glow: "", icon: CircleDashed },
+  cancelled: { ring: "border-border/70", glow: "", icon: XCircle },
+  timeout: { ring: "border-destructive/70", glow: "", icon: Clock },
 };
 
 export const CustomNode = memo(({ data, selected }: NodeProps) => {

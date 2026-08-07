@@ -60,7 +60,21 @@ async def create_api_key(
     current_user: CurrentUser = Depends(get_current_user),
     org_id: Any = Depends(get_current_organization),
 ):
-    """Create a new APIKey."""
+    """Create a new APIKey.
+
+    Phase 1 compatibility: the model requires a unique ``key_hash`` but
+    the client never sends one, so a hash is derived from the key prefix
+    plus a server-side secret when absent.
+    """
+    if not data.key_hash:
+        import hashlib
+        import secrets
+        secret = secrets.token_hex(16)
+        data = data.model_copy(update={
+            "key_hash": hashlib.sha256(
+                f"{data.key_prefix}.{secret}".encode(),
+            ).hexdigest(),
+        })
     svc = APIKeyService(APIKeyRepository(db))
     return await svc.create(data, actor_id=current_user.id
 , organization_id=org_id

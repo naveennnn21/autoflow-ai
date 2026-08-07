@@ -23,17 +23,22 @@ export default function LoginPage() {
     e.preventDefault();
     if (!email || !password) return;
     setLoading(true);
-    await login(email);
-    toast.success("Welcome back");
-    router.push("/dashboard");
+    try {
+      await login(email, password);
+      toast.success("Welcome back");
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error("Sign in failed", {
+        description: err instanceof Error ? err.message : "Check your credentials and try again.",
+      });
+      setLoading(false);
+    }
   };
 
-  const magicLink = async () => {
-    if (!email) { toast.error("Enter your email first"); return; }
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    toast.success("Magic link sent", { description: `Check ${email}` });
-    setLoading(false);
+  const notAvailable = (label: string) => {
+    toast.info(`${label} is not configured yet`, {
+      description: "Use email and password to sign in.",
+    });
   };
 
   return (
@@ -72,10 +77,10 @@ export default function LoginPage() {
       </div>
 
       <div className="space-y-2">
-        <Button variant="outline" className="w-full h-10" onClick={magicLink} disabled={loading}>
+        <Button variant="outline" className="w-full h-10" onClick={() => notAvailable("Magic link")} disabled={loading}>
           <Mail className="h-4 w-4" /> Magic link
         </Button>
-        <Button variant="outline" className="w-full h-10" disabled={loading}>
+        <Button variant="outline" className="w-full h-10" onClick={() => notAvailable("GitHub sign-in")} disabled={loading}>
           <Github className="h-4 w-4" /> GitHub
         </Button>
       </div>
@@ -86,4 +91,4 @@ export default function LoginPage() {
       </p>
     </motion.div>
   );
-}
+}

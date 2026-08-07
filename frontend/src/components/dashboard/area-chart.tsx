@@ -10,17 +10,13 @@ import {
   YAxis,
 } from "recharts";
 
-const data = [
-  { day: "Jan", runs: 2400, success: 2350 },
-  { day: "Feb", runs: 3800, success: 3720 },
-  { day: "Mar", runs: 5200, success: 5100 },
-  { day: "Apr", runs: 6900, success: 6800 },
-  { day: "May", runs: 8100, success: 7950 },
-  { day: "Jun", runs: 9800, success: 9660 },
-  { day: "Jul", runs: 12400, success: 12240 },
-];
+export interface ChartPoint {
+  day: string;
+  runs: number;
+  success: number;
+}
 
-export default function AreaChart() {
+export default function AreaChart({ data }: { data: ChartPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ReAreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
@@ -35,8 +31,14 @@ export default function AreaChart() {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-        <XAxis dataKey="day" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+        <XAxis
+          dataKey="day"
+          tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+          axisLine={false}
+          tickLine={false}
+          minTickGap={24}
+        />
+        <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
         <Tooltip
           contentStyle={{
             background: "hsl(var(--popover))",

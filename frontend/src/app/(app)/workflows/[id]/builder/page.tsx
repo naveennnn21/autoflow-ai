@@ -2,12 +2,16 @@
 
 import * as React from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Play, Save, Settings2, Sparkles, Undo2, Redo2 } from "lucide-react";
+import { ArrowLeft, Play, RefreshCw, Save, Settings2, Sparkles, Undo2, Redo2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/shared/skeleton";
+import { EmptyState } from "@/components/shared/empty-state";
 import { FlowCanvas, type FlowCanvasHandle } from "@/components/builder/flow-canvas";
-import { workflows } from "@/lib/mock-workflows";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/api/keys";
+import { workflowsApi } from "@/lib/api/workflows";
 import { timeAgo } from "@/lib/utils";
 
 export default function BuilderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,9 +22,43 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
     void params.then((p) => setId(p.id));
   }, [params]);
 
-  if (!id) return null;
-  const workflow = workflows.find((w) => w.id === id);
-  if (!workflow) notFound();
+  const { data: workflow, isLoading, isError, refetch } = useQuery({
+    queryKey: queryKeys.workflow(id ?? ""),
+    queryFn: () => workflowsApi.get(id ?? ""),
+    enabled: !!id,
+  });
+
+  if (!id || isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-6.5rem)] flex-col">
+        <div className="flex items-center gap-3 pb-4">
+          <Skeleton className="h-9 w-9" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+        </div>
+        <Skeleton className="min-h-0 flex-1" />
+      </div>
+    );
+  }
+
+  if (isError || !workflow) {
+    if (!isError) notFound();
+    return (
+      <div className="flex h-[calc(100vh-6.5rem)] flex-col items-center justify-center">
+        <EmptyState
+          title="Couldn't load this workflow"
+          description="The workflow API is unreachable or the workflow was deleted."
+          action={
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => void refetch()}>
+              <RefreshCw className="h-4 w-4" /> Retry
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-6.5rem)] flex-col">

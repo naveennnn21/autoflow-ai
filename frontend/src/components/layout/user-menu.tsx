@@ -49,8 +49,7 @@ export function UserMenu() {
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
           onClick={() => {
-            logout();
-            router.push("/login");
+            void logout().then(() => router.push("/login"));
           }}
         >
           <LogOut className="mr-2" /> Sign out

@@ -16,4 +16,10 @@ export const queryKeys = {
   teams: ["teams"] as const,
   users: ["users"] as const,
   subscriptions: ["subscriptions"] as const,
+  planner: ["planner"] as const,
+  plannerHealth: ["planner", "health"] as const,
+  dashboard: ["dashboard"] as const,
+  analytics: (period: string) => ["analytics", period] as const,
+  apiKey: (id: string) => ["api-keys", id] as const,
+  notification: (id: string) => ["notifications", id] as const,
 };

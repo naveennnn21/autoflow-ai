@@ -1,28 +1,81 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Rocket, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/shared/icons";
+import { workflowsApi } from "@/lib/api/workflows";
+import { useSession } from "@/stores/session";
+import { useWorkflows } from "@/stores/workflows";
 import type { WorkflowPreview } from "@/types";
 
 const phaseLabels = ["Compiling workflow spec", "Validating graph", "Deploying"];
 
 export function WorkflowPreviewCard({ preview }: { preview: WorkflowPreview }) {
+  const router = useRouter();
   const [phase, setPhase] = React.useState<number | null>(null);
   const [done, setDone] = React.useState(false);
+  const [deploying, setDeploying] = React.useState(false);
 
-  const deploy = () => {
+  const deploy = async () => {
+    if (deploying) return;
+    setDeploying(true);
     setPhase(0);
     setDone(false);
     phaseLabels.forEach((_, i) => {
       setTimeout(() => setPhase(i), i * 700);
     });
-    setTimeout(() => {
-      setPhase(null);
+
+    try {
+      const orgId = useSession.getState().orgId;
+      const connectors = Array.from(new Set(preview.steps.map((s) => s.connector).filter(Boolean)));
+      const workflow = await workflowsApi.create({
+        organization_id: orgId ?? undefined,
+        name: preview.name,
+        description: preview.description,
+        status: "draft",
+        config: {
+          trigger: connectors[0] ? `${connectors[0]}:event` : "manual",
+          connectorIds: connectors,
+          runs: 0,
+          successRate: 0,
+          avgDurationMs: 0,
+          favorite: false,
+          tags: [],
+          nodes: preview.steps.map((s, i) => ({
+            id: `n${i + 1}`,
+            kind: i === 0 ? "trigger" : "action",
+            label: s.label,
+            connector: s.connector,
+            action: s.action,
+          })),
+          edges: preview.steps.slice(1).map((_, i) => ({
+            id: `e${i + 1}`,
+            source: `n${i + 1}`,
+            target: `n${i + 2}`,
+          })),
+        },
+      });
+      useWorkflows.getState().addWorkflow(workflow);
       setDone(true);
-    }, phaseLabels.length * 700 + 400);
+      toast.success("Workflow created", {
+        description: `"${workflow.name}" saved as a draft.`,
+        action: {
+          label: "Open builder",
+          onClick: () => router.push(`/workflows/${workflow.id}/builder`),
+        },
+      });
+    } catch (err) {
+      toast.error("Deploy failed", {
+        description: err instanceof Error ? err.message : "The workflow API is unreachable.",
+      });
+    } finally {
+      setDeploying(false);
+      setTimeout(() => setPhase(null), 600);
+    }
   };
 
   return (
@@ -50,7 +103,7 @@ export function WorkflowPreviewCard({ preview }: { preview: WorkflowPreview }) {
                 animate={{ scale: 1 }}
                 className="flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success"
               >
-                <Check className="h-3 w-3" /> Deployed
+                <Check className="h-3 w-3" /> Created
               </motion.span>
             ) : (
               <motion.span
@@ -59,7 +112,7 @@ export function WorkflowPreviewCard({ preview }: { preview: WorkflowPreview }) {
                 animate={{ opacity: 1 }}
                 className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
               >
-                Ready to deploy
+                {deploying ? "Deploying…" : "Ready to deploy"}
               </motion.span>
             )}
           </AnimatePresence>
@@ -100,7 +153,7 @@ export function WorkflowPreviewCard({ preview }: { preview: WorkflowPreview }) {
                 {phaseLabels[phase]}
               </motion.span>
             )}
-            <Button size="sm" variant={done ? "secondary" : "default"} onClick={deploy}>
+            <Button size="sm" variant={done ? "secondary" : "default"} onClick={() => void deploy()} disabled={deploying}>
               {done ? (
                 <>
                   <Check className="h-3.5 w-3.5" /> Deploy again

@@ -6,7 +6,7 @@ import { FadeIn, StaggerGroup, StaggerItem } from "@/components/motion/fade-in";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { features, integrations } from "@/lib/mock-content";
+import { features, integrations } from "@/lib/content";
 
 export function Features() {
   return (
