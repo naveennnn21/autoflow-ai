@@ -8,9 +8,6 @@ class APIKeyCreate(BaseModel):
     user_id: Union[str, UUID]
     name: str
     key_prefix: str
-    key_hash: Optional[str] = None
-    is_active: Optional[bool] = True
-    scopes: Optional[dict] = None
 
 
 class APIKeyUpdate(BaseModel):

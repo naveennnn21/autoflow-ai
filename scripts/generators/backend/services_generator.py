@@ -203,6 +203,28 @@ def _build_base_service_content() -> str:
         '            else:',
         '                self._cache.clear()',
         '',
+        '    def _in_other_org(self, obj: Any, organization_id: Any) -> bool:',
+        '        """Multi-tenant guard: True when a row belongs to another org.',
+        '',
+        '        Applied to get/update/delete so an authenticated member of one',
+        '        organization can never read or mutate rows owned by another',
+        '        organization (works for every tenant-scoped generated entity).',
+        '        Internal flows that pass organization_id=None are unaffected.',
+        '',
+        '        Org-scoped access returns None/False (routers surface 404) on',
+        '        purpose: hiding the row\'s existence is safer than revealing it',
+        '        via a 403. The _authorize_* hooks still raise PermissionError',
+        '        for same-org authorization failures.',
+        '        """',
+        '        if organization_id is None or obj is None:',
+        '            return False',
+        '        if not hasattr(self.repository.model_class, "organization_id"):',
+        '            return False',
+        '        own = getattr(obj, "organization_id", None)',
+        '        if own is None:',
+        '            return False',
+        '        return str(own) != str(organization_id)',
+        '',
         '    # --- Auth hooks (override in subclasses) ---',
         '',
         '    def _authorize_create(self, data: DTOType, actor_id: Any = None,',
@@ -323,8 +345,12 @@ def _build_base_service_content() -> str:
         '        cache_key = self._cache_key("get", id)',
         '        cached = self._cache_get(cache_key)',
         '        if cached is not None:',
+        '            if self._in_other_org(cached, organization_id):',
+        '                return None',
         '            return cached',
         '        obj = await self.repository.get(id)',
+        '        if obj is not None and self._in_other_org(obj, organization_id):',
+        '            return None',
         '        if obj and not self._authorize_read(obj, actor_id):',
         '            raise PermissionError("Not authorized to read")',
         '        if obj is not None and self.CACHE_ENABLED:',
@@ -340,6 +366,8 @@ def _build_base_service_content() -> str:
         '                     organization_id: Any = None) -> Optional[ModelType]:',
         '        obj = await self.repository.get(id)',
         '        if not obj:',
+        '            return None',
+        '        if self._in_other_org(obj, organization_id):',
         '            return None',
         '        if not self._authorize_update(obj, data, actor_id):',
         '            raise PermissionError("Not authorized to update")',
@@ -363,6 +391,8 @@ def _build_base_service_content() -> str:
         '        obj = await self.repository.get(id)',
         '        if not obj:',
         '            return False',
+        '        if self._in_other_org(obj, organization_id):',
+        '            return False',
         '        if not self._authorize_delete(obj, actor_id):',
         '            raise PermissionError("Not authorized to delete")',
         '        async with self.repository.transaction():',
@@ -382,14 +412,20 @@ def _build_base_service_content() -> str:
         '        return count',
         '',
         '    @retry(max_attempts=3)',
-        '    async def restore(self, id: Any, actor_id: Any = None) -> Optional[ModelType]:',
+        '    async def restore(self, id: Any, actor_id: Any = None,',
+        '                      organization_id: Any = None) -> Optional[ModelType]:',
+        '        obj = await self.repository.get(id)',
+        '        if obj is None:',
+        '            return None',
+        '        if self._in_other_org(obj, organization_id):',
+        '            return None',
         '        async with self.repository.transaction():',
-        '            obj = await self.repository.restore(id, commit=False)',
+        '            restored = await self.repository.restore(id, commit=False)',
         '        self._cache_invalidate()',
-        '        await self._log_audit("restore", id, {}, actor_id, None)',
+        '        await self._log_audit("restore", id, {}, actor_id, organization_id)',
         '        await self._publish_event(f"{self.repository.model_class.__name__}.Restored",',
-        '                                 id, {}, actor_id, None)',
-        '        return obj',
+        '                                 id, {}, actor_id, organization_id)',
+        '        return restored',
         '',
         '    @retry(max_attempts=2)',
         '    async def list(self, page: int = 1, page_size: int = 20,',
@@ -522,11 +558,41 @@ class {entity.name}Service(BaseService[{entity.name}, {entity.name}Create]):
                                   organization_id=organization_id)
 ''')
 
+    # Entities whose model carries a required unique ``key_hash`` (APIKey)
+    # never receive it from the client: derive it server-side from the key
+    # prefix plus an ephemeral secret so the NOT NULL/unique constraint is
+    # satisfied without ever trusting (or round-tripping) the client.
+    has_key_hash = any(
+        fname_ == "key_hash" for fname_ in entity.field_names()
+    )
+    if has_key_hash:
+        parts.append(f'''
+    async def create(self, data: {entity.name}Create, actor_id: Any = None,
+                     organization_id: Any = None) -> {entity.name}:
+        """Create a {entity.name.lower()}, deriving ``key_hash`` when absent.
+
+        The model requires a unique ``key_hash`` but the client never sends
+        one (it only provides ``key_prefix``). Derive a salted digest
+        server-side so the NOT NULL/unique constraint is always satisfied.
+        """
+        dto = self._to_dict(data)
+        if not dto.get("key_hash"):
+            import hashlib
+            import secrets
+            dto["key_hash"] = hashlib.sha256(
+                f"{{dto.get('key_prefix', '')}}.{{secrets.token_hex(16)}}".encode(),
+            ).hexdigest()
+        return await super().create(dto, actor_id=actor_id,
+                                     organization_id=organization_id)
+''')
+
     if has_soft_delete:
         parts.append(f'''
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[{entity.name}]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[{entity.name}]:
         """Restore a soft-deleted {entity.name.lower()}."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 ''')
 
     parts.append(f'''

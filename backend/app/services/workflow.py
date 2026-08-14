@@ -50,9 +50,11 @@ class WorkflowService(BaseService[Workflow, WorkflowCreate]):
                                   organization_id=organization_id)
 
 
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[Workflow]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[Workflow]:
         """Restore a soft-deleted workflow."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 
 
     async def search(

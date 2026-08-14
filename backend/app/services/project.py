@@ -50,9 +50,11 @@ class ProjectService(BaseService[Project, ProjectCreate]):
                                   organization_id=organization_id)
 
 
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[Project]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[Project]:
         """Restore a soft-deleted project."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 
 
     async def search(

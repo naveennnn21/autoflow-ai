@@ -29,6 +29,10 @@ The entire backend is **generated from YAML metadata** (see
   polling triggers, retry, circuit breaking, rate limiting, and observability.
 - **Event Bus** — metadata-configured publish/subscribe with persistence,
   replay, retry with backoff, dead-lettering, versioning, and idempotency.
+- **AI Workflow lifecycle** — prompt → plan → spec → editable builder →
+  validate → deploy (versioned) → run (live SSE) with runtime-backed **retry**
+  (new attempt, `retry_attempt` tracking) and **version restore** (older
+  versions re-created as new versions, history never mutated).
 - **REST API** — FastAPI with 130+ routes, JWT auth (bcrypt + HS256), scoped
   authorization, multi-tenant isolation, rate limiting, security headers, and
   audit logging.
@@ -226,7 +230,7 @@ See `.env.example` for the complete list. Key variables:
 
 - `docs/ai_planner.md` · `docs/compiler.md` · `docs/runtime.md` ·
   `docs/connectors.md` · `docs/events.md` · `docs/middleware.md` ·
-  `docs/frontend.md`
+  `docs/frontend.md` · `docs/ai_workflow.md` · `docs/llm_provider.md`
 - `METADATA_GUIDE.md` — metadata authoring guide
 - `scripts/generators/FROZEN.md` — frozen generator status
 - Interactive API docs: `/docs` (Swagger) · `/redoc`

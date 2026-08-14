@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_projects(
     page: int = Query(1, ge=1, description="Page number"),
@@ -83,6 +82,20 @@ async def create_project(
 , organization_id=org_id
 )
 
+@router.get("/count",
+    summary="Count projects", operation_id="count_projects")
+async def count_projects(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+):
+    """Count total Project records."""
+    svc = ProjectService(ProjectRepository(db))
+    total = await svc.count(
+        organization_id=org_id,
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=ProjectResponse,
         summary="Get Project by ID", operation_id="get_project")
 async def get_project(
@@ -128,7 +141,9 @@ async def delete_project(
 ):
     """Soft delete a Project."""
     svc = ProjectService(ProjectRepository(db))
-    result = await svc.delete(id, actor_id=current_user.id)
+    result = await svc.delete(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
     return None
@@ -138,21 +153,13 @@ async def restore_project(
     id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
 ):
     """Restore a soft-deleted Project."""
     svc = ProjectService(ProjectRepository(db))
-    obj = await svc.restore(id, actor_id=current_user.id)
+    obj = await svc.restore(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not obj:
         raise HTTPException(status_code=404, detail="Project not found")
     return obj
-@router.get("/count",
-    summary="Count projects", operation_id="count_projects")
-async def count_projects(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-    org_id: Any = Depends(get_current_organization),
-):
-    """Count total Project records."""
-    svc = ProjectService(ProjectRepository(db))
-    total = await svc.count()
-    return {"count": total}

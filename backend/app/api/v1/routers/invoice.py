@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_invoices(
     page: int = Query(1, ge=1, description="Page number"),
@@ -83,6 +82,20 @@ async def create_invoice(
 , organization_id=org_id
 )
 
+@router.get("/count",
+    summary="Count invoices", operation_id="count_invoices")
+async def count_invoices(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+):
+    """Count total Invoice records."""
+    svc = InvoiceService(InvoiceRepository(db))
+    total = await svc.count(
+        organization_id=org_id,
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=InvoiceResponse,
         summary="Get Invoice by ID", operation_id="get_invoice")
 async def get_invoice(
@@ -128,18 +141,9 @@ async def delete_invoice(
 ):
     """Hard delete a Invoice."""
     svc = InvoiceService(InvoiceRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
+    result = await svc.delete(id, hard=True, actor_id=current_user.id
+, organization_id=org_id
+)
     if not result:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return None
-@router.get("/count",
-    summary="Count invoices", operation_id="count_invoices")
-async def count_invoices(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-    org_id: Any = Depends(get_current_organization),
-):
-    """Count total Invoice records."""
-    svc = InvoiceService(InvoiceRepository(db))
-    total = await svc.count()
-    return {"count": total}

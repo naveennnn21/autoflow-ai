@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_templates(
     page: int = Query(1, ge=1, description="Page number"),
@@ -83,6 +82,20 @@ async def create_template(
 , organization_id=org_id
 )
 
+@router.get("/count",
+    summary="Count templates", operation_id="count_templates")
+async def count_templates(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+):
+    """Count total Template records."""
+    svc = TemplateService(TemplateRepository(db))
+    total = await svc.count(
+        organization_id=org_id,
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=TemplateResponse,
         summary="Get Template by ID", operation_id="get_template")
 async def get_template(
@@ -128,7 +141,9 @@ async def delete_template(
 ):
     """Soft delete a Template."""
     svc = TemplateService(TemplateRepository(db))
-    result = await svc.delete(id, actor_id=current_user.id)
+    result = await svc.delete(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not result:
         raise HTTPException(status_code=404, detail="Template not found")
     return None
@@ -138,21 +153,13 @@ async def restore_template(
     id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
 ):
     """Restore a soft-deleted Template."""
     svc = TemplateService(TemplateRepository(db))
-    obj = await svc.restore(id, actor_id=current_user.id)
+    obj = await svc.restore(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not obj:
         raise HTTPException(status_code=404, detail="Template not found")
     return obj
-@router.get("/count",
-    summary="Count templates", operation_id="count_templates")
-async def count_templates(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-    org_id: Any = Depends(get_current_organization),
-):
-    """Count total Template records."""
-    svc = TemplateService(TemplateRepository(db))
-    total = await svc.count()
-    return {"count": total}

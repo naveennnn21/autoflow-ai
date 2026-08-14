@@ -50,9 +50,11 @@ class SubscriptionService(BaseService[Subscription, SubscriptionCreate]):
                                   organization_id=organization_id)
 
 
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[Subscription]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[Subscription]:
         """Restore a soft-deleted subscription."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 
 
     async def search(

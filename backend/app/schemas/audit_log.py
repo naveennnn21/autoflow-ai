@@ -24,8 +24,8 @@ class AuditLogResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    organization_id: Union[str, UUID]
-    user_id: Union[str, UUID]
+    organization_id: Optional[Union[str, UUID]] = None
+    user_id: Optional[Union[str, UUID]] = None
     action: Optional[str] = None
     resource_type: Optional[str] = None
     resource_id: Optional[str] = None

@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_audit_logs(
     page: int = Query(1, ge=1, description="Page number"),
@@ -83,6 +82,20 @@ async def create_audit_log(
 , organization_id=org_id
 )
 
+@router.get("/count",
+    summary="Count audit_logs", operation_id="count_audit_logs")
+async def count_audit_logs(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+):
+    """Count total AuditLog records."""
+    svc = AuditLogService(AuditLogRepository(db))
+    total = await svc.count(
+        organization_id=org_id,
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=AuditLogResponse,
         summary="Get AuditLog by ID", operation_id="get_audit_log")
 async def get_audit_log(
@@ -128,18 +141,9 @@ async def delete_audit_log(
 ):
     """Hard delete a AuditLog."""
     svc = AuditLogService(AuditLogRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
+    result = await svc.delete(id, hard=True, actor_id=current_user.id
+, organization_id=org_id
+)
     if not result:
         raise HTTPException(status_code=404, detail="AuditLog not found")
     return None
-@router.get("/count",
-    summary="Count audit_logs", operation_id="count_audit_logs")
-async def count_audit_logs(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-    org_id: Any = Depends(get_current_organization),
-):
-    """Count total AuditLog records."""
-    svc = AuditLogService(AuditLogRepository(db))
-    total = await svc.count()
-    return {"count": total}

@@ -24,29 +24,90 @@ from pydantic import BaseModel, Field
 
 from app.ai import AIPlanner
 from app.ai.planner.exceptions import (
+    PlanValidationError,
     PlannerError,
+    ProviderError,
     ProviderNotConfiguredError,
 )
 from app.ai.planner.models import PlanResult
+from app.ai.providers.resolver import (
+    ProviderUsage,
+    create_wrapped_default,
+    per_request_mode,
+    resolve_named_provider,
+)
 from app.api.v1.deps import CurrentUser, get_current_organization, get_current_user
 from app.compiler.compiler import PromptCompiler
 from app.compiler.exceptions import CompilerError, ValidationError
 
 router = APIRouter(prefix="/planner", tags=["Planner"])
 
-_planner = AIPlanner()
+# Resolve the default LLM provider once at startup from the existing
+# configuration system (env vars or backend/.env). ``None`` when no
+# credentials are configured - the planner then runs its deterministic
+# pipeline and reports provider/mode honestly.
+_default_provider, _usage = create_wrapped_default(model="")
+_planner = AIPlanner(
+    provider=_default_provider,
+    provider_name=_default_provider.name if _default_provider else "",
+    model=_default_provider.model if _default_provider else "",
+)
 
 
 def _provider_configured() -> bool:
-    """True when at least one LLM provider key is configured."""
-    from app.core.config import settings
+    """True when a real LLM provider has credentials configured."""
+    return _default_provider is not None
 
-    return bool(
-        settings.openai_api_key
-        or settings.anthropic_api_key
-        or settings.gemini_api_key
-        or settings.openrouter_api_key
-    )
+
+def _error_payload(exc: Exception) -> dict:
+    """Map planner/provider failures to structured error payloads.
+
+    Never includes raw provider exception text (which can carry request
+    internals); secrets are never exposed.
+    """
+    if isinstance(exc, ProviderNotConfiguredError):
+        return {
+            "code": "LLM_PROVIDER_NOT_CONFIGURED",
+            "message": (
+                "No LLM provider is configured. Set OPENAI_API_KEY (or "
+                "another provider key) to enable AI planning, or rely on "
+                "the deterministic fallback."
+            ),
+            "retryable": False,
+        }
+    if isinstance(exc, ProviderError):
+        return {
+            "code": "LLM_PROVIDER_UNAVAILABLE",
+            "message": "The configured AI provider is currently unavailable.",
+            "retryable": True,
+        }
+    if isinstance(exc, PlanValidationError):
+        return {
+            "code": "PLAN_VALIDATION_FAILED",
+            "message": exc.message or "The plan failed validation.",
+            "retryable": False,
+            "errors": list(exc.errors or []),
+        }
+    if isinstance(exc, PlannerError):
+        return {
+            "code": "PLANNING_FAILED",
+            "message": exc.message or "Planning failed.",
+            "retryable": False,
+        }
+    return {
+        "code": "PLANNING_FAILED",
+        "message": "Planning failed.",
+        "retryable": False,
+    }
+
+
+def _planner_error(exc: Exception) -> HTTPException:
+    """Raise structured HTTP errors for planner failures."""
+    payload = _error_payload(exc)
+    status_code = 503 if payload["retryable"] else 422
+    if payload["code"] == "LLM_PROVIDER_NOT_CONFIGURED":
+        status_code = 503
+    return HTTPException(status_code=status_code, detail=payload)
 
 
 class ChatRequest(BaseModel):
@@ -68,6 +129,7 @@ class ChatResponse(BaseModel):
     plan: Optional[Dict[str, Any]] = None
     provider: str = "deterministic"
     model: str = ""
+    mode: str = "deterministic"
     latency_ms: float = 0.0
     warnings: List[str] = []
     errors: List[str] = []
@@ -75,28 +137,65 @@ class ChatResponse(BaseModel):
 
 def _run_plan(prompt: str, org_id: Any, user_id: Any,
               conversation_id: str = "", provider: str = "",
-              model: str = "") -> PlanResult:
-    """Execute the shared planner pipeline (deterministic fallback built in)."""
+              model: str = "") -> tuple:
+    """Execute the shared planner pipeline (deterministic fallback built in).
+
+    Returns ``(PlanResult, mode)`` where mode is one of ``real_llm``,
+    ``deterministic_fallback`` or ``deterministic`` so callers never claim
+    an LLM produced a plan when the deterministic pipeline was used.
+
+    Mode is computed from THIS request's usage deltas - a later request is
+    never labelled ``real_llm`` just because an earlier one succeeded.
+    """
+    # Snapshot counters BEFORE planning so mode reflects only this request.
+    calls_before = _usage.calls
+    successes_before = _usage.successes
+    active = _default_provider
+    usage = _usage
+    if provider and (active is None or provider != active.name):
+        # Explicit provider requested via the API: resolve it when its
+        # credential is configured, else fall back deterministically.
+        active = resolve_named_provider(provider, model=model)
+        if active is not None:
+            usage = ProviderUsage(active)
+            usage.wrap()
     try:
-        return _planner.plan(
+        result = _planner.plan(
             prompt,
             organization_id=str(org_id) if org_id else "",
             user_id=str(user_id) if user_id else "",
             conversation_id=conversation_id,
             provider_name=provider,
             model=model,
+            provider=active,
         )
     except ProviderNotConfiguredError:
         # Planner already falls back to the deterministic pipeline, but a
         # provider explicitly requested via the API is not available.
-        return _planner.plan(
+        result = _planner.plan(
             prompt,
             organization_id=str(org_id) if org_id else "",
             user_id=str(user_id) if user_id else "",
             conversation_id=conversation_id,
             provider_name="",
             model="",
+            provider=None,
         )
+    finally:
+        # The pipeline binds whichever provider was active; never let an
+        # explicit provider leak into subsequent default requests.
+        if active is not _default_provider:
+            _planner.pipeline.set_provider(_default_provider)
+    mode = per_request_mode(
+        usage, calls_before, successes_before,
+        _provider_configured() or active is not None,
+    )
+    if mode == "deterministic_fallback" and result.warnings is not None:
+        result.warnings.append(
+            "LLM provider configured but unavailable - deterministic "
+            "fallback was used for this plan.",
+        )
+    return result, mode
 
 
 def _estimate_line(plan: Any) -> str:
@@ -200,7 +299,7 @@ async def planner_chat_stream(
             yield _sse("stage", {"stage": "intent", "label": "Understanding your request"})
             yield _sse("stage", {"stage": "planning", "label": "Selecting connectors & steps"})
 
-            result = await asyncio.to_thread(
+            result, mode = await asyncio.to_thread(
                 _run_plan, body.message, org_id, current_user.id,
                 conversation_id=body.conversation_id,
             )
@@ -223,7 +322,9 @@ async def planner_chat_stream(
                 "preview": _build_preview(result),
                 "plan": result.plan.to_dict() if result.plan else None,
                 "provider": result.provider or "deterministic",
-                "model": result.model,
+                "model": result.model
+                or (_default_provider.model if _default_provider else ""),
+                "mode": mode,
                 "latency_ms": result.latency_ms,
                 "warnings": list(result.warnings),
                 "errors": list(result.errors),
@@ -237,8 +338,8 @@ async def planner_chat_stream(
             }
             yield _sse("meta", meta)
             yield _sse("done", {})
-        except Exception as exc:  # noqa: BLE001 - surface as SSE error frame
-            yield _sse("error", {"message": str(exc)})
+        except Exception as exc:  # noqa: BLE001 - surface as structured SSE error frame
+            yield _sse("error", _error_payload(exc))
             yield _sse("done", {})
 
     return StreamingResponse(
@@ -265,17 +366,31 @@ async def planner_compile(
 ) -> Dict[str, Any]:
     """Plan a workflow from a prompt, compile it into Workflow Specification v1,
     and return the spec plus compiler diagnostics."""
-    result = _run_plan(
-        body.prompt,
-        org_id,
-        current_user.id,
-        conversation_id=body.conversation_id,
-    )
+    try:
+        result, mode = _run_plan(
+            body.prompt,
+            org_id,
+            current_user.id,
+            conversation_id=body.conversation_id,
+        )
+    except PlannerError as exc:
+        payload = _error_payload(exc)
+        return {
+            "ok": False,
+            "intent": "",
+            "errors": [payload["message"]],
+            "code": payload["code"],
+            "retryable": payload.get("retryable"),
+            "spec": None,
+            "plan": None,
+            "diagnostics": [],
+        }
     if result.plan is None:
         return {
             "ok": False,
             "intent": result.intent,
             "errors": list(result.errors) or list(result.warnings),
+            "mode": mode,
             "spec": None,
             "plan": None,
             "diagnostics": [],
@@ -287,6 +402,7 @@ async def planner_compile(
             "clarification_required": True,
             "clarification_questions": list(result.plan.clarification_questions),
             "errors": [],
+            "mode": mode,
             "spec": None,
             "plan": result.plan.to_dict(),
             "diagnostics": [],
@@ -297,6 +413,7 @@ async def planner_compile(
         return {
             "ok": True,
             "intent": result.intent,
+            "mode": mode,
             "spec": spec.to_dict(),
             "plan": result.plan.to_dict(),
             "diagnostics": {
@@ -335,12 +452,15 @@ async def planner_chat(
     org_id: Any = Depends(get_current_organization),
 ) -> ChatResponse:
     """Plan a workflow from a message and render a chat reply + preview."""
-    result = _run_plan(
-        body.message,
-        org_id,
-        current_user.id,
-        conversation_id=body.conversation_id,
-    )
+    try:
+        result, mode = _run_plan(
+            body.message,
+            org_id,
+            current_user.id,
+            conversation_id=body.conversation_id,
+        )
+    except PlannerError as exc:
+        raise _planner_error(exc)
     return ChatResponse(
         reply=_build_reply(result),
         clarifications=list(result.plan.clarification_questions)
@@ -348,7 +468,9 @@ async def planner_chat(
         preview=_build_preview(result),
         plan=result.plan.to_dict() if result.plan else None,
         provider=result.provider or "deterministic",
-        model=result.model,
+        model=result.model
+        or (_default_provider.model if _default_provider else ""),
+        mode=mode,
         latency_ms=result.latency_ms,
         warnings=list(result.warnings),
         errors=list(result.errors),
@@ -362,15 +484,19 @@ async def planner_plan(
     org_id: Any = Depends(get_current_organization),
 ) -> Dict[str, Any]:
     """Return the full planner output plus the runtime definition."""
-    result = _run_plan(
-        body.prompt,
-        org_id,
-        current_user.id,
-        conversation_id=body.conversation_id,
-        provider=body.provider,
-        model=body.model,
-    )
+    try:
+        result, mode = _run_plan(
+            body.prompt,
+            org_id,
+            current_user.id,
+            conversation_id=body.conversation_id,
+            provider=body.provider,
+            model=body.model,
+        )
+    except PlannerError as exc:
+        raise _planner_error(exc)
     payload = result.to_dict()
+    payload["mode"] = mode
     if result.plan is not None:
         payload["runtime_definition"] = result.plan.to_runtime_definition()
     else:
@@ -392,9 +518,11 @@ async def planner_health(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Planner unavailable: {exc}",
         )
+    configured = _provider_configured()
     return {
         "status": "ok",
-        "provider_configured": _provider_configured(),
+        "provider_configured": configured,
+        "mode": "real_llm" if configured else "deterministic",
         "catalog": summary,
         "metrics": metrics,
     }

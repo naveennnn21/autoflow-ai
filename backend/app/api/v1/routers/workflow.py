@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_workflows(
     page: int = Query(1, ge=1, description="Page number"),
@@ -83,6 +82,20 @@ async def create_workflow(
 , organization_id=org_id
 )
 
+@router.get("/count",
+    summary="Count workflows", operation_id="count_workflows")
+async def count_workflows(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+):
+    """Count total Workflow records."""
+    svc = WorkflowService(WorkflowRepository(db))
+    total = await svc.count(
+        organization_id=org_id,
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=WorkflowResponse,
         summary="Get Workflow by ID", operation_id="get_workflow")
 async def get_workflow(
@@ -128,7 +141,9 @@ async def delete_workflow(
 ):
     """Soft delete a Workflow."""
     svc = WorkflowService(WorkflowRepository(db))
-    result = await svc.delete(id, actor_id=current_user.id)
+    result = await svc.delete(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not result:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return None
@@ -138,21 +153,13 @@ async def restore_workflow(
     id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
 ):
     """Restore a soft-deleted Workflow."""
     svc = WorkflowService(WorkflowRepository(db))
-    obj = await svc.restore(id, actor_id=current_user.id)
+    obj = await svc.restore(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not obj:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return obj
-@router.get("/count",
-    summary="Count workflows", operation_id="count_workflows")
-async def count_workflows(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-    org_id: Any = Depends(get_current_organization),
-):
-    """Count total Workflow records."""
-    svc = WorkflowService(WorkflowRepository(db))
-    total = await svc.count()
-    return {"count": total}

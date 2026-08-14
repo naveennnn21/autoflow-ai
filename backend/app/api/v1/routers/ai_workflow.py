@@ -30,6 +30,10 @@ from app.api.v1.deps import (
 from app.compiler.compiler import PromptCompiler
 from app.compiler.exceptions import CompilerError, ValidationError
 from app.core.database import get_db
+from sqlalchemy import update as sa_update
+
+from app.models.enums import ExecutionStatus as ExecutionStatusEnum
+from app.models.execution import Execution as ExecutionModel
 from app.repositories.execution import ExecutionRepository
 from app.repositories.workflow import WorkflowRepository
 from app.runtime.compiler import WorkflowCompiler
@@ -41,6 +45,7 @@ from app.ai.planner.connector_selector import connector_catalog
 
 from app.services.ai_runtime import (
     cancel_run,
+    catalog_auth,
     execution_status,
     get_run,
     pause_run,
@@ -246,8 +251,7 @@ def _validate_definition(defn: Dict[str, Any],
                     f"{node.get('label') or node.get('id')})",
                 )
             else:
-                auth = str(catalog.get(connector.lower(), {}).get("auth")
-                           or "none")
+                auth = catalog_auth(catalog.get(connector.lower()))
                 if auth not in ("none", "public"):
                     warnings.append(
                         f"'{connector}' requires {auth} credentials - "
@@ -284,6 +288,85 @@ def _validate_definition(defn: Dict[str, Any],
         "node_count": len(nodes),
         "edge_count": len(edges),
     }
+
+
+
+def _definition_for_version(wf: Any, version: Optional[int]) -> Dict[str, Any]:
+    """The definition that ran (or should run) at the given workflow version.
+
+    The live workflow config always holds the CURRENT definition; older
+    version snapshots live in ``config.versions``, so a retry/restore can
+    reproduce an exact past definition instead of silently re-running the
+    latest one.
+    """
+    cfg = dict(wf.config or {})
+    current = int(wf.version or 1)
+    if version and int(version) != current:
+        versions = list(cfg.get("versions") or [])
+        snap = next((v for v in versions
+                     if int(v.get("version", 0)) == int(version)), None)
+        if snap and snap.get("definition"):
+            return dict(snap["definition"])
+    return {
+        "name": wf.name,
+        "nodes": cfg.get("nodes") or [],
+        "edges": cfg.get("edges") or [],
+    }
+
+
+def _original_version(original: Any) -> int:
+    """The workflow version an execution ran at (persisted in its state)."""
+    try:
+        out = dict(original.output_data or {})
+        version = int(out.get("version") or 0)
+        if version > 0:
+            return version
+    except Exception:  # noqa: BLE001 - fall back to the current version
+        pass
+    return 0
+
+
+async def _launch_run(
+    db: AsyncSession,
+    wf: Any,
+    defn: Dict[str, Any],
+    org_id: Any,
+    user_id: Any,
+    workflow_id: str,
+    version: int,
+    inputs: Optional[Dict[str, Any]] = None,
+    node_pacing_ms: int = 120,
+    retry_attempt: int = 0,
+) -> str:
+    """Create an execution record, start the runtime run, attach the DB
+    watcher. Returns the new execution id."""
+    exec_svc = ExecutionService(ExecutionRepository(db))
+    record = await exec_svc.create_in_organization(
+        ExecutionCreate(workflow_id=workflow_id,
+                        organization_id=org_id),
+        actor_id=user_id, organization_id=org_id,
+    )
+    execution_id = str(record.id)
+    if retry_attempt:
+        await db.execute(
+            sa_update(ExecutionModel)
+            .where(ExecutionModel.id == record.id)
+            .values(retry_attempt=retry_attempt, trigger_type="retry"),
+        )
+        await db.commit()
+    runtime_def = to_runtime_definition(
+        defn, workflow_id, wf.name, version=version,
+    )
+    start_run(runtime_def, execution_id,
+              inputs={**(inputs or {}), "organization_id": str(org_id),
+                      "workflow_id": workflow_id},
+              catalog=_catalog(), node_pacing_ms=node_pacing_ms)
+    asyncio.get_running_loop().create_task(
+        _sync_execution_record(execution_id, str(org_id), user_id,
+                               workflow_id),
+    )
+    return execution_id
+
 
 
 def _sse(event: str, data: Dict[str, Any]) -> str:
@@ -621,31 +704,11 @@ async def execute_workflow(
                 "nodes": cfg.get("nodes") or [],
                 "edges": cfg.get("edges") or []}
 
-    # Create the execution record through the real service.
-    exec_svc = ExecutionService(ExecutionRepository(db))
-    record = await exec_svc.create_in_organization(
-        ExecutionCreate(workflow_id=body.workflow_id,
-                        organization_id=org_id),
-        actor_id=current_user.id, organization_id=org_id,
-    )
-    execution_id = str(record.id)
-
-    runtime_def = to_runtime_definition(
-        defn, body.workflow_id, wf.name,
+    execution_id = await _launch_run(
+        db, wf, defn, org_id, current_user.id, body.workflow_id,
         version=int(wf.version or 1),
-    )
-    inputs = {
-        **dict(body.inputs or {}),
-        "organization_id": str(org_id),
-        "workflow_id": body.workflow_id,
-    }
-    start_run(runtime_def, execution_id, inputs=inputs,
-              catalog=_catalog(), node_pacing_ms=body.node_pacing_ms)
-
-    # Background watcher: sync the DB execution record when the run ends.
-    asyncio.get_running_loop().create_task(
-        _sync_execution_record(execution_id, str(org_id),
-                               current_user.id, body.workflow_id),
+        inputs=dict(body.inputs or {}),
+        node_pacing_ms=body.node_pacing_ms,
     )
     return ExecuteResponse(
         execution_id=execution_id,
@@ -691,6 +754,11 @@ async def _sync_execution_record(execution_id: str, org_id: str,
                 ExecutionStatus, str(status_value).upper(),
                 ExecutionStatus.FAILED,
             )
+            # Preserve the record's trigger origin (e.g. ``retry`` attempts
+            # set by the retry endpoint) instead of overwriting it.
+            existing = await repo.get(execution_id)
+            trigger_type = str(getattr(existing, "trigger_type", "") or "")\
+                or "ai"
             payload = ExecutionUpdate(
                 status=enum_value,
                 output_data=state.to_dict() if state else None,
@@ -699,7 +767,7 @@ async def _sync_execution_record(execution_id: str, org_id: str,
                     (datetime.now(timezone.utc) - state.created_at)
                     .total_seconds() * 1000,
                 ) if state else None,
-                trigger_type="ai",
+                trigger_type=trigger_type,
             )
             await repo.update(execution_id, payload)
             await session.commit()
@@ -784,6 +852,15 @@ async def control_execution(
     org_id: Any = Depends(get_current_organization),
 ) -> Dict[str, Any]:
     await _assert_execution_org(execution_id, db, org_id)
+
+    # Retry works off the persisted execution record, so it must NOT be
+    # gated on the run still being in the in-memory registry (finished
+    # runs are trimmed once the registry cap is reached).
+    if body.action == "retry":
+        result = await _perform_retry(execution_id, db, current_user, org_id)
+        result["action"] = "retry"
+        return result
+
     run = get_run(execution_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Execution not found")
@@ -800,13 +877,194 @@ async def control_execution(
         ok = resume_run(execution_id)
         return {"execution_id": execution_id, "action": "resume",
                 "status": "resumed" if ok else "cannot_resume"}
-    if body.action == "retry":
-        if not run.done:
-            return {"execution_id": execution_id, "action": "retry",
-                    "status": "already_running"}
-        raise HTTPException(
-            status_code=400,
-            detail="Retry is handled by re-running the workflow "
-                   "(POST /ai_workflow/execute)",
-        )
     raise HTTPException(status_code=400, detail="Unknown control action")
+
+
+async def _perform_retry(execution_id: str, db: AsyncSession,
+                         current_user: CurrentUser,
+                         org_id: Any) -> Dict[str, Any]:
+    """Retry a terminal execution as a brand-new attempt.
+
+    Org-scoped, existence-checked, retryability-checked, and version
+    preserving: the retry re-runs the exact definition of the version the
+    original attempt ran (when the workflow has since changed) and records
+    the new attempt with an incremented ``retry_attempt``.
+    """
+    if not org_id:
+        raise HTTPException(status_code=403,
+                            detail="organization is required")
+    exec_svc = ExecutionService(ExecutionRepository(db))
+    original = await exec_svc.get(execution_id, actor_id=current_user.id,
+                                  organization_id=org_id)
+    if original is None:
+        raise HTTPException(status_code=404, detail="Execution not found")
+
+    if isinstance(original.status, ExecutionStatusEnum):
+        status = original.status.value
+    else:
+        status = str(original.status or "").lower()
+
+    run = get_run(execution_id)
+    if run is not None and not run.done:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "EXECUTION_NOT_RETRYABLE",
+                    "message": "Execution is still running."},
+        )
+    if status == "completed":
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "EXECUTION_NOT_RETRYABLE",
+                    "message": "Execution already completed - nothing to retry."},
+        )
+    if status == "paused":
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "EXECUTION_NOT_RETRYABLE",
+                    "message": "Execution is paused - resume it instead of retrying."},
+        )
+    if status in ("", "pending") and run is None:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "EXECUTION_NOT_RETRYABLE",
+                    "message": "Execution state is unknown - re-run the workflow instead."},
+        )
+
+    svc = WorkflowService(WorkflowRepository(db))
+    wf = await svc.get(str(original.workflow_id), actor_id=current_user.id,
+                       organization_id=org_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    version = _original_version(original) or int(wf.version or 1)
+    defn = _definition_for_version(wf, version)
+    validation = _validate_definition(defn, defn.get("name") or wf.name)
+    if not validation["valid"]:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "RETRY_INVALID_DEFINITION",
+                    "message": "The workflow definition can no longer be compiled.",
+                    "errors": validation["errors"]},
+        )
+
+    new_id = await _launch_run(
+        db, wf, defn, org_id, current_user.id, str(original.workflow_id),
+        version=version,
+        retry_attempt=(original.retry_attempt or 0) + 1,
+    )
+    return {
+        "execution_id": new_id,
+        "retry_of": execution_id,
+        "workflow_id": str(original.workflow_id),
+        "version": version,
+        "status": "running",
+    }
+
+
+@router.post("/executions/{execution_id}/retry",
+             summary="Retry a failed or cancelled execution")
+async def retry_execution(
+    execution_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+) -> Dict[str, Any]:
+    """Retry a terminal execution as a new attempt.
+
+    Only ``failed``, ``cancelled``, and ``timeout`` executions are
+    retryable; running / paused / completed executions return a structured
+    409. The retry preserves the workflow version of the original attempt.
+    """
+    return await _perform_retry(execution_id, db, current_user, org_id)
+
+
+@router.post("/workflows/{workflow_id}/versions/{version_id}/restore",
+             summary="Restore an older workflow version as a new version")
+async def restore_workflow_version(
+    workflow_id: str,
+    version_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+) -> Dict[str, Any]:
+    """Restore a historical version by copying its definition into a NEW
+    version snapshot. Historical snapshots are never mutated."""
+    from app.models.workflow import Workflow as _WFModel
+    from app.models.enums import WorkflowStatus as _WFStatus
+
+    svc = WorkflowService(WorkflowRepository(db))
+    wf = await svc.get(workflow_id, actor_id=current_user.id,
+                       organization_id=org_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    cfg = dict(wf.config or {})
+    versions = list(cfg.get("versions") or [])
+    snap = next((v for v in versions
+                 if int(v.get("version", 0)) == int(version_id)), None)
+    if snap is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    defn = dict(snap.get("definition") or {})
+    if not defn.get("nodes"):
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "VERSION_NOT_RESTORABLE",
+                    "message": "Version has no stored definition."},
+        )
+
+    name = defn.get("name") or wf.name
+    validation = _validate_definition(defn, name)
+    if not validation["valid"]:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "VERSION_INVALID",
+                    "message": "Restored version does not pass validation.",
+                    "errors": validation["errors"]},
+        )
+    try:
+        compiled, report = _prompt_compile(defn, name)
+        spec = compiled.to_dict()
+    except (CompilerError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "VERSION_INVALID",
+                    "message": f"Restored version cannot be compiled: {exc}"},
+        )
+    if report.errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "VERSION_INVALID",
+                    "message": "Restored version has compiler errors.",
+                    "errors": list(report.errors)},
+        )
+
+    new_version = int(wf.version or 0) + 1
+    versions.append({
+        "version": new_version,
+        "spec": spec,
+        "definition": {"name": name,
+                       "nodes": defn.get("nodes", []),
+                       "edges": defn.get("edges", [])},
+        "compiler_version": _COMPILER_VERSION,
+        "planner_version": _PLANNER_VERSION,
+        "restored_from": int(version_id),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    await db.execute(
+        sa_update(_WFModel)
+        .where(_WFModel.id == wf.id)
+        .values(
+            config={"nodes": defn.get("nodes", []),
+                    "edges": defn.get("edges", []),
+                    "versions": versions},
+            version=new_version,
+            status=_WFStatus.ACTIVE,
+        ),
+    )
+    await db.commit()
+    return {
+        "ok": True,
+        "workflow_id": workflow_id,
+        "restored_from_version": int(version_id),
+        "new_version_number": new_version,
+        "status": "restored",
+    }

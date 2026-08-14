@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_users(
     page: int = Query(1, ge=1, description="Page number"),
@@ -77,6 +76,18 @@ async def create_user(
     return await svc.create(data, actor_id=current_user.id
 )
 
+@router.get("/count",
+    summary="Count users", operation_id="count_users")
+async def count_users(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Count total User records."""
+    svc = UserService(UserRepository(db))
+    total = await svc.count(
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=UserResponse,
         summary="Get User by ID", operation_id="get_user")
 async def get_user(
@@ -117,7 +128,8 @@ async def delete_user(
 ):
     """Soft delete a User."""
     svc = UserService(UserRepository(db))
-    result = await svc.delete(id, actor_id=current_user.id)
+    result = await svc.delete(id, actor_id=current_user.id
+)
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
     return None
@@ -130,17 +142,8 @@ async def restore_user(
 ):
     """Restore a soft-deleted User."""
     svc = UserService(UserRepository(db))
-    obj = await svc.restore(id, actor_id=current_user.id)
+    obj = await svc.restore(id, actor_id=current_user.id
+)
     if not obj:
         raise HTTPException(status_code=404, detail="User not found")
     return obj
-@router.get("/count",
-    summary="Count users", operation_id="count_users")
-async def count_users(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """Count total User records."""
-    svc = UserService(UserRepository(db))
-    total = await svc.count()
-    return {"count": total}

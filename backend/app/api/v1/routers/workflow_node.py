@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_workflow_nodes(
     page: int = Query(1, ge=1, description="Page number"),
@@ -77,6 +76,18 @@ async def create_workflow_node(
     return await svc.create(data, actor_id=current_user.id
 )
 
+@router.get("/count",
+    summary="Count workflow_nodes", operation_id="count_workflow_nodes")
+async def count_workflow_nodes(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Count total WorkflowNode records."""
+    svc = WorkflowNodeService(WorkflowNodeRepository(db))
+    total = await svc.count(
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=WorkflowNodeResponse,
         summary="Get WorkflowNode by ID", operation_id="get_workflow_node")
 async def get_workflow_node(
@@ -117,17 +128,8 @@ async def delete_workflow_node(
 ):
     """Hard delete a WorkflowNode."""
     svc = WorkflowNodeService(WorkflowNodeRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
+    result = await svc.delete(id, hard=True, actor_id=current_user.id
+)
     if not result:
         raise HTTPException(status_code=404, detail="WorkflowNode not found")
     return None
-@router.get("/count",
-    summary="Count workflow_nodes", operation_id="count_workflow_nodes")
-async def count_workflow_nodes(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """Count total WorkflowNode records."""
-    svc = WorkflowNodeService(WorkflowNodeRepository(db))
-    total = await svc.count()
-    return {"count": total}

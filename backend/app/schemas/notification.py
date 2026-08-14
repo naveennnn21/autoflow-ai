@@ -21,7 +21,7 @@ class NotificationResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    user_id: Union[str, UUID]
+    user_id: Optional[Union[str, UUID]] = None
     title: Optional[str] = None
     message: Optional[str] = None
     type: Optional[str] = None

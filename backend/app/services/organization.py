@@ -37,9 +37,11 @@ class OrganizationService(BaseService[Organization, OrganizationCreate]):
         super().__init__(repository, audit_service=audit_service)
 
 
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[Organization]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[Organization]:
         """Restore a soft-deleted organization."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 
 
     async def search(

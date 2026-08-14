@@ -29,7 +29,7 @@ class WorkflowNodeResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    workflow_id: Union[str, UUID]
+    workflow_id: Optional[Union[str, UUID]] = None
     type: Optional[WorkflowNodeType] = None
     label: Optional[str] = None
     position: Optional[int] = None
