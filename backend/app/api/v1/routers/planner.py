@@ -14,9 +14,12 @@ Endpoints
 - GET  /planner/health   planner + connector catalog status
 """
 
+import asyncio
+import json
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.ai import AIPlanner
@@ -26,6 +29,8 @@ from app.ai.planner.exceptions import (
 )
 from app.ai.planner.models import PlanResult
 from app.api.v1.deps import CurrentUser, get_current_organization, get_current_user
+from app.compiler.compiler import PromptCompiler
+from app.compiler.exceptions import CompilerError, ValidationError
 
 router = APIRouter(prefix="/planner", tags=["Planner"])
 
@@ -150,6 +155,177 @@ def _build_preview(result: PlanResult) -> Dict[str, Any]:
         ],
         "estimate": _estimate_line(plan),
     }
+
+
+def _sse(event: str, data: Dict[str, Any]) -> str:
+    """Serialize one SSE frame."""
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
+
+
+def _chunks(text: str, size: int = 24) -> List[str]:
+    """Split text into streaming-sized chunks (word-aware)."""
+    if len(text) <= size:
+        return [text] if text else []
+    parts: List[str] = []
+    current = ""
+    for word in text.split(" "):
+        if current and len(current) + len(word) + 1 > size:
+            parts.append(current)
+            current = word
+        else:
+            current = f"{current} {word}".strip()
+    if current:
+        parts.append(current)
+    return parts
+
+
+@router.post("/chat/stream", summary="Stream a chat with the AI planner (SSE)")
+async def planner_chat_stream(
+    body: ChatRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+) -> StreamingResponse:
+    """Stream the planner pipeline over SSE: stages, then reply tokens.
+
+    Emits real planner output (never mock data):
+      event: stage   {stage: intent|planning|compiling|estimating}
+      event: token   {text: "..."}
+      event: meta    {preview, plan, clarifications, warnings, errors, metrics}
+      event: error   {message}
+      event: done    {}
+    """
+
+    async def gen():
+        try:
+            yield _sse("stage", {"stage": "intent", "label": "Understanding your request"})
+            yield _sse("stage", {"stage": "planning", "label": "Selecting connectors & steps"})
+
+            result = await asyncio.to_thread(
+                _run_plan, body.message, org_id, current_user.id,
+                conversation_id=body.conversation_id,
+            )
+
+            yield _sse("stage", {"stage": "compiling", "label": "Compiling workflow spec"})
+            yield _sse("stage", {"stage": "estimating", "label": "Estimating cost & latency"})
+
+            reply = _build_reply(result)
+            if result.plan and result.plan.clarification_required:
+                yield _sse("stage", {"stage": "clarify", "label": "Need a bit more detail"})
+
+            for chunk in _chunks(reply):
+                yield _sse("token", {"text": chunk})
+                await asyncio.sleep(0.02)
+
+            meta: Dict[str, Any] = {
+                "reply": reply,
+                "clarifications": list(result.plan.clarification_questions)
+                if result.plan else list(result.warnings),
+                "preview": _build_preview(result),
+                "plan": result.plan.to_dict() if result.plan else None,
+                "provider": result.provider or "deterministic",
+                "model": result.model,
+                "latency_ms": result.latency_ms,
+                "warnings": list(result.warnings),
+                "errors": list(result.errors),
+                "metrics": {
+                    "confidence": (result.plan.confidence if result.plan else 0.0),
+                    "estimated_cost": (result.plan.estimated_cost if result.plan else 0.0),
+                    "estimated_latency_ms": (result.plan.estimated_latency_ms if result.plan else 0.0),
+                    "intent": result.intent,
+                    "intent_confidence": result.intent_confidence,
+                },
+            }
+            yield _sse("meta", meta)
+            yield _sse("done", {})
+        except Exception as exc:  # noqa: BLE001 - surface as SSE error frame
+            yield _sse("error", {"message": str(exc)})
+            yield _sse("done", {})
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+class CompileRequestModel(BaseModel):
+    prompt: str = Field(min_length=1, max_length=4000)
+    conversation_id: str = ""
+
+
+@router.post("/compile", summary="Plan and compile into a Workflow Specification")
+async def planner_compile(
+    body: CompileRequestModel,
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+) -> Dict[str, Any]:
+    """Plan a workflow from a prompt, compile it into Workflow Specification v1,
+    and return the spec plus compiler diagnostics."""
+    result = _run_plan(
+        body.prompt,
+        org_id,
+        current_user.id,
+        conversation_id=body.conversation_id,
+    )
+    if result.plan is None:
+        return {
+            "ok": False,
+            "intent": result.intent,
+            "errors": list(result.errors) or list(result.warnings),
+            "spec": None,
+            "plan": None,
+            "diagnostics": [],
+        }
+    if result.plan.clarification_required:
+        return {
+            "ok": False,
+            "intent": result.intent,
+            "clarification_required": True,
+            "clarification_questions": list(result.plan.clarification_questions),
+            "errors": [],
+            "spec": None,
+            "plan": result.plan.to_dict(),
+            "diagnostics": [],
+        }
+    try:
+        compiler = PromptCompiler()
+        spec, report = compiler.compile_with_report(result.plan)
+        return {
+            "ok": True,
+            "intent": result.intent,
+            "spec": spec.to_dict(),
+            "plan": result.plan.to_dict(),
+            "diagnostics": {
+                "errors": list(report.errors),
+                "warnings": [],
+                "stage_times_ms": report.stage_times_ms,
+                "total_ms": report.total_ms,
+                "node_count": report.node_count,
+                "edge_count": report.edge_count,
+                "undefined_variables": list(report.undefined_variables or []),
+            },
+            "metrics": {
+                "confidence": result.plan.confidence,
+                "estimated_cost": result.plan.estimated_cost,
+                "estimated_latency_ms": result.plan.estimated_latency_ms,
+                "provider": result.provider,
+                "model": result.model,
+                "latency_ms": result.latency_ms,
+            },
+        }
+    except (CompilerError, ValidationError) as exc:
+        return {
+            "ok": False,
+            "intent": result.intent,
+            "errors": [str(exc)],
+            "spec": None,
+            "plan": result.plan.to_dict(),
+            "diagnostics": {"errors": [str(exc)]},
+        }
 
 
 @router.post("/chat", summary="Chat with the AI planner")

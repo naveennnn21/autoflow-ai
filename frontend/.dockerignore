@@ -1,0 +1,30 @@
+# Dependencies (reinstalled inside the image)
+node_modules
+**/node_modules
+.pnp
+.pnp.*
+
+# Build output
+.next
+out
+build
+dist
+coverage
+
+# Local env & secrets
+.env
+.env.local
+.env*.local
+*.pem
+
+# Next.js / TS
+next-env.d.ts
+*.tsbuildinfo
+.eslintcache
+
+# Misc
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log

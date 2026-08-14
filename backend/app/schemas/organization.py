@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 class OrganizationCreate(BaseModel):
@@ -19,11 +20,11 @@ class OrganizationUpdate(BaseModel):
 
 
 class OrganizationResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    name: str
-    slug: str
+    name: Optional[str] = None
+    slug: Optional[str] = None
     logo_url: Optional[str] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
@@ -33,7 +34,7 @@ class OrganizationResponse(BaseModel):
 
 
 class OrganizationPublic(BaseModel):
-    id: str
+    id: Union[str, UUID]
     name: Optional[str] = None
     slug: Optional[str] = None
     logo_url: Optional[str] = None

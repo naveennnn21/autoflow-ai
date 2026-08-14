@@ -14,6 +14,20 @@ from app.repositories.audit_log import AuditLogRepository
 
 router = APIRouter(prefix="/audit_log", tags=["AuditLog"])
 
+def _serialize_item(obj):
+    return AuditLogResponse.model_validate(obj, from_attributes=True).model_dump(mode="json")
+
+
+def _serialize_page(pag):
+    return {
+        "items": [_serialize_item(i) for i in (pag.items or [])],
+        "total": pag.total,
+        "page": pag.page,
+        "page_size": pag.page_size,
+        "total_pages": pag.total_pages,
+    }
+
+
 @router.get("")
 async def list_audit_logs(
     page: int = Query(1, ge=1, description="Page number"),
@@ -31,7 +45,7 @@ async def list_audit_logs(
         sort_by=sort_by, sort_order=sort_order,
         organization_id=org_id,
     )
-    return pag
+    return _serialize_page(pag)
 
 @router.get("/search", response_model=PaginatedResponse)
 async def search_audit_logs(
@@ -47,10 +61,13 @@ async def search_audit_logs(
     items, total = await svc.search(query=q, page=page, page_size=page_size
 , organization_id=org_id
 )
-    return PaginatedResponse(
-        items=items, total=total, page=page,
-        page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
-    )
+    return {
+        "items": [_serialize_item(i) for i in (items or [])],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // max(page_size, 1),
+    }
 
 @router.post("", response_model=AuditLogResponse, status_code=201,
          summary="Create AuditLog", operation_id="create_audit_log")

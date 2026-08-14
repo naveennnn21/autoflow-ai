@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 class MarketplaceItemCreate(BaseModel):
@@ -9,7 +10,7 @@ class MarketplaceItemCreate(BaseModel):
 
 
 class MarketplaceItemUpdate(BaseModel):
-    author_id: Optional[str] = None
+    author_id: Optional[Union[str, UUID]] = None
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
@@ -24,26 +25,26 @@ class MarketplaceItemUpdate(BaseModel):
 
 
 class MarketplaceItemResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    author_id: str
-    name: str
-    slug: str
-    description: str
-    category: str
-    type: str
-    config: dict
-    version: str
-    is_verified: bool
-    is_paid: bool
-    price: float
-    deleted_at: datetime
+    author_id: Union[str, UUID]
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[str] = None
+    config: Optional[dict] = None
+    version: Optional[str] = None
+    is_verified: Optional[bool] = None
+    is_paid: Optional[bool] = None
+    price: Optional[float] = None
+    deleted_at: Optional[datetime] = None
 
 
 class MarketplaceItemPublic(BaseModel):
-    id: str
-    author_id: Optional[str] = None
+    id: Union[str, UUID]
+    author_id: Optional[Union[str, UUID]] = None
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None

@@ -1,15 +1,16 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 class InvoiceCreate(BaseModel):
-    organization_id: str
+    organization_id: Union[str, UUID]
     amount: float
 
 
 class InvoiceUpdate(BaseModel):
-    organization_id: Optional[str] = None
-    subscription_id: Optional[str] = None
+    organization_id: Optional[Union[str, UUID]] = None
+    subscription_id: Optional[Union[str, UUID]] = None
     amount: Optional[float] = None
     currency: Optional[str] = None
     status: Optional[str] = None
@@ -20,24 +21,24 @@ class InvoiceUpdate(BaseModel):
 
 
 class InvoiceResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    organization_id: str
-    subscription_id: str
-    amount: float
-    currency: str
-    status: str
-    description: str
-    paid_at: datetime
-    due_date: datetime
-    extra_metadata: dict
+    organization_id: Union[str, UUID]
+    subscription_id: Union[str, UUID]
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    status: Optional[str] = None
+    description: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    extra_metadata: Optional[dict] = None
 
 
 class InvoicePublic(BaseModel):
-    id: str
-    organization_id: Optional[str] = None
-    subscription_id: Optional[str] = None
+    id: Union[str, UUID]
+    organization_id: Optional[Union[str, UUID]] = None
+    subscription_id: Optional[Union[str, UUID]] = None
     amount: Optional[float] = None
     currency: Optional[str] = None
     status: Optional[str] = None

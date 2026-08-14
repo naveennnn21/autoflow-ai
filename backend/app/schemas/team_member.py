@@ -1,29 +1,30 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 class TeamMemberCreate(BaseModel):
-    team_id: str
-    user_id: str
+    team_id: Union[str, UUID]
+    user_id: Union[str, UUID]
 
 
 class TeamMemberUpdate(BaseModel):
-    team_id: Optional[str] = None
-    user_id: Optional[str] = None
+    team_id: Optional[Union[str, UUID]] = None
+    user_id: Optional[Union[str, UUID]] = None
     role: Optional[str] = None
 
 
 class TeamMemberResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    team_id: str
-    user_id: str
-    role: str
+    team_id: Union[str, UUID]
+    user_id: Union[str, UUID]
+    role: Optional[str] = None
 
 
 class TeamMemberPublic(BaseModel):
-    id: str
-    team_id: Optional[str] = None
-    user_id: Optional[str] = None
+    id: Union[str, UUID]
+    team_id: Optional[Union[str, UUID]] = None
+    user_id: Optional[Union[str, UUID]] = None
     role: Optional[str] = None

@@ -64,6 +64,24 @@ def _build_entity_router(entity):
     out.append('')
     out.append(f'router = APIRouter(prefix="{route}", tags=["{en}"])')
     out.append('')
+    # ========== RESPONSE SERIALIZATION ==========
+    # Phase 1 compatibility: repository methods return ORM rows. FastAPI's
+    # response validation uses from_attributes=True, but ORM objects cannot
+    # be JSON-encoded directly, so list/search results are mapped through
+    # the entity Response schema before returning.
+    out.append(f'def _serialize_item(obj):')
+    out.append(f'    return {en}Response.model_validate(obj, from_attributes=True).model_dump(mode="json")')
+    out.append('')
+    out.append('')
+    out.append(f'def _serialize_page(pag):')
+    out.append(f'    return {{')
+    out.append(f'        "items": [_serialize_item(i) for i in (pag.items or [])],')
+    out.append(f'        "total": pag.total,')
+    out.append(f'        "page": pag.page,')
+    out.append(f'        "page_size": pag.page_size,')
+    out.append(f'        "total_pages": pag.total_pages,')
+    out.append(f'    }}')
+    out.append('')
     # ========== LIST ==========
     # Root route uses '' (not '/') so clients hitting /api/v1/<entity>
     # (no trailing slash) match directly instead of receiving a 307
@@ -92,10 +110,10 @@ def _build_entity_router(entity):
     if is_ten:
         out.append('        organization_id=org_id,')
     out.append('    )')
-    out.append('    return pag')
+    out.append('    return _serialize_page(pag)')
     out.append('')
     # ========== SEARCH ==========
-    out.append('@router.get("/search", response_model=PaginatedResponse)')
+    out.append('@router.get("/search")')
     out.append(f'async def search_{sname}s(')
     out.append('    q: str = Query(..., min_length=1, description="Search query"),')
     out.append('    page: int = Query(1, ge=1),')
@@ -115,10 +133,13 @@ def _build_entity_router(entity):
     if is_ten:
         out.append(', organization_id=org_id')
     out.append(')')
-    out.append('    return PaginatedResponse(')
-    out.append('        items=items, total=total, page=page,')
-    out.append('        page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),')
-    out.append('    )')
+    out.append('    return {')
+    out.append('        "items": [_serialize_item(i) for i in (items or [])],')
+    out.append('        "total": total,')
+    out.append('        "page": page,')
+    out.append('        "page_size": page_size,')
+    out.append('        "total_pages": (total + page_size - 1) // max(page_size, 1),')
+    out.append('    }')
     out.append('')
     # ========== CREATE ==========
     # Empty path keeps POST /api/v1/<entity> slash-free (see LIST note).

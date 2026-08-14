@@ -14,6 +14,14 @@ export interface ExecutionListParams {
 }
 
 export const executionsApi = {
+  /** Create a real execution record for a workflow (used by the builder Test run). */
+  async create(workflowId: string, organizationId: string): Promise<BackendExecution> {
+    return api.post<BackendExecution>("/execution", {
+      workflow_id: workflowId,
+      organization_id: organizationId,
+    });
+  },
+
   async list(params: ExecutionListParams = {}): Promise<Paginated<Execution>> {
     const [res, wfs] = await Promise.all([
       api.get<Paginated<BackendExecution>>(withQuery("/execution", params)),

@@ -1,17 +1,18 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.workflow_node import WorkflowNodeType
 
 class WorkflowNodeCreate(BaseModel):
-    workflow_id: str
+    workflow_id: Union[str, UUID]
     type: WorkflowNodeType
     label: str
 
 
 class WorkflowNodeUpdate(BaseModel):
-    workflow_id: Optional[str] = None
+    workflow_id: Optional[Union[str, UUID]] = None
     type: Optional[WorkflowNodeType] = None
     label: Optional[str] = None
     position: Optional[int] = None
@@ -25,25 +26,25 @@ class WorkflowNodeUpdate(BaseModel):
 
 
 class WorkflowNodeResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    workflow_id: str
-    type: WorkflowNodeType
-    label: str
-    position: int
-    config: dict
-    input_schema: dict
-    output_schema: dict
-    timeout_seconds: int
-    retry_count: int
-    retry_delay: int
-    is_active: bool
+    workflow_id: Union[str, UUID]
+    type: Optional[WorkflowNodeType] = None
+    label: Optional[str] = None
+    position: Optional[int] = None
+    config: Optional[dict] = None
+    input_schema: Optional[dict] = None
+    output_schema: Optional[dict] = None
+    timeout_seconds: Optional[int] = None
+    retry_count: Optional[int] = None
+    retry_delay: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
 class WorkflowNodePublic(BaseModel):
-    id: str
-    workflow_id: Optional[str] = None
+    id: Union[str, UUID]
+    workflow_id: Optional[Union[str, UUID]] = None
     type: Optional[WorkflowNodeType] = None
     label: Optional[str] = None
     position: Optional[int] = None

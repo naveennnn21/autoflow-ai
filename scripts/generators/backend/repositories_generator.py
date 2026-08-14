@@ -409,9 +409,23 @@ class BaseRepository(IRepository, Generic[ModelType]):
 
     @asynccontextmanager
     async def transaction(self):
-        """Async context manager for atomic transactions (Unit of Work)."""
-        async with self.session.begin():
-            yield
+        """Async context manager for atomic transactions (Unit of Work).
+
+        Reuses an already-active session transaction (auto-begun by a prior
+        read in the service layer) instead of failing with
+        "A transaction is already begun on this Session". Commit/rollback
+        are still performed so write atomicity is preserved.
+        """
+        if self.session.in_transaction():
+            try:
+                yield
+                await self.session.commit()
+            except Exception:
+                await self.session.rollback()
+                raise
+        else:
+            async with self.session.begin():
+                yield
 
     async def flush(self):
         await self.session.flush()

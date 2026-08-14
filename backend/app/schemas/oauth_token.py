@@ -1,14 +1,15 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 class OAuthTokenCreate(BaseModel):
-    user_id: str
+    user_id: Union[str, UUID]
     provider: str
 
 
 class OAuthTokenUpdate(BaseModel):
-    user_id: Optional[str] = None
+    user_id: Optional[Union[str, UUID]] = None
     provider: Optional[str] = None
     token_type: Optional[str] = None
     scope: Optional[str] = None
@@ -16,19 +17,19 @@ class OAuthTokenUpdate(BaseModel):
 
 
 class OAuthTokenResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    user_id: str
-    provider: str
-    token_type: str
-    scope: str
-    expires_at: datetime
+    user_id: Union[str, UUID]
+    provider: Optional[str] = None
+    token_type: Optional[str] = None
+    scope: Optional[str] = None
+    expires_at: Optional[datetime] = None
 
 
 class OAuthTokenPublic(BaseModel):
-    id: str
-    user_id: Optional[str] = None
+    id: Union[str, UUID]
+    user_id: Optional[Union[str, UUID]] = None
     provider: Optional[str] = None
     token_type: Optional[str] = None
     scope: Optional[str] = None

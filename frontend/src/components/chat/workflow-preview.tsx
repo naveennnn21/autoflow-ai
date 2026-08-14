@@ -3,12 +3,12 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Rocket, Sparkles } from "lucide-react";
+import { Check, Rocket, Sparkles, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/shared/icons";
+import { aiWorkflowApi } from "@/lib/api/ai-workflow";
 import { workflowsApi } from "@/lib/api/workflows";
-import { useSession } from "@/stores/session";
 import { useWorkflows } from "@/stores/workflows";
 import type { WorkflowPreview } from "@/types";
 
@@ -19,59 +19,69 @@ export function WorkflowPreviewCard({ preview }: { preview: WorkflowPreview }) {
   const [phase, setPhase] = React.useState<number | null>(null);
   const [done, setDone] = React.useState(false);
   const [deploying, setDeploying] = React.useState(false);
+  const [warnings, setWarnings] = React.useState<string[]>([]);
+  const [workflowId, setWorkflowId] = React.useState<string | null>(null);
+  const [deployedVersion, setDeployedVersion] = React.useState<number | null>(null);
 
   const deploy = async () => {
     if (deploying) return;
     setDeploying(true);
     setPhase(0);
     setDone(false);
+    setWarnings([]);
     phaseLabels.forEach((_, i) => {
       setTimeout(() => setPhase(i), i * 700);
     });
 
     try {
-      const orgId = useSession.getState().orgId;
-      const connectors = Array.from(new Set(preview.steps.map((s) => s.connector).filter(Boolean)));
-      const workflow = await workflowsApi.create({
-        organization_id: orgId ?? undefined,
-        name: preview.name,
-        description: preview.description,
-        status: "draft",
-        config: {
-          trigger: connectors[0] ? `${connectors[0]}:event` : "manual",
-          connectorIds: connectors,
-          runs: 0,
-          successRate: 0,
-          avgDurationMs: 0,
-          favorite: false,
-          tags: [],
-          nodes: preview.steps.map((s, i) => ({
-            id: `n${i + 1}`,
-            kind: i === 0 ? "trigger" : "action",
-            label: s.label,
-            connector: s.connector,
-            action: s.action,
-          })),
-          edges: preview.steps.slice(1).map((_, i) => ({
-            id: `e${i + 1}`,
-            source: `n${i + 1}`,
-            target: `n${i + 2}`,
-          })),
-        },
-      });
-      useWorkflows.getState().addWorkflow(workflow);
+      const nodes = preview.steps.map((s, i) => ({
+        id: `n${i + 1}`,
+        kind: (i === 0 ? "trigger" : "action") as "trigger" | "action",
+        label: s.label,
+        connector: s.connector,
+        action: s.action,
+      }));
+      const edges = preview.steps.slice(1).map((_, i) => ({
+        id: `e${i + 1}`,
+        source: `n${i + 1}`,
+        target: `n${i + 2}`,
+      }));
+
+      const result = await aiWorkflowApi.deploy(
+        { name: preview.name, nodes, edges },
+        workflowId ?? undefined,
+        preview.description,
+      );
+
+      if (!result.ok || !result.workflow_id) {
+        setWarnings(result.errors ?? []);
+        toast.error("Deploy failed", {
+          description: (result.errors ?? []).join(" ") || "The workflow did not pass validation.",
+        });
+        return;
+      }
+
+      setWorkflowId(result.workflow_id);
+      setDeployedVersion(result.version ?? null);
+      if (result.warnings?.length) setWarnings(result.warnings);
+      try {
+        const workflow = await workflowsApi.get(result.workflow_id);
+        useWorkflows.getState().addWorkflow(workflow);
+      } catch {
+        // workflow list refresh is best-effort
+      }
       setDone(true);
-      toast.success("Workflow created", {
-        description: `"${workflow.name}" saved as a draft.`,
+      toast.success("Workflow deployed", {
+        description: `v${result.version ?? 1} is live and ready to execute.`,
         action: {
           label: "Open builder",
-          onClick: () => router.push(`/workflows/${workflow.id}/builder`),
+          onClick: () => router.push(`/workflows/${result.workflow_id}/builder`),
         },
       });
     } catch (err) {
-      toast.error("Deploy failed", {
-        description: err instanceof Error ? err.message : "The workflow API is unreachable.",
-      });
+      const detail = err instanceof Error ? err.message : "The workflow API is unreachable.";
+      setWarnings([detail]);
+      toast.error("Deploy failed", { description: detail });
     } finally {
       setDeploying(false);
       setTimeout(() => setPhase(null), 600);
@@ -139,9 +149,25 @@ export function WorkflowPreviewCard({ preview }: { preview: WorkflowPreview }) {
           ))}
         </div>
 
+        {warnings.length > 0 && (
+          <div className="mt-3 space-y-1 rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2">
+            {warnings.map((w) => (
+              <div key={w} className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <TriangleAlert className="mt-0.5 h-3 w-3 shrink-0" />
+                {w}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-background/40 px-3 py-2">
           <span className="text-xs text-muted-foreground">{preview.estimate}</span>
           <div className="flex gap-2">
+            {done && workflowId && (
+              <span className="hidden items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-[10px] font-medium text-success sm:flex">
+                v{deployedVersion ?? 1} · {workflowId.slice(0, 8)}
+              </span>
+            )}
             {phase !== null && (
               <motion.span
                 key={phase}

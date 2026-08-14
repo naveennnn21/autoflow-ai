@@ -199,6 +199,97 @@ export function withQuery(
   return qs ? `${path}?${qs}` : path;
 }
 
+export interface SseFrame {
+  event: string;
+  data: Record<string, unknown>;
+}
+
+/**
+ * Stream an SSE endpoint with the auth headers the rest of the client
+ * uses. Calls `onFrame` for every parsed `event:`/`data:` frame pair.
+ * Returns an abort function to stop the stream (used by cancel).
+ */
+export function streamSse(
+  path: string,
+  opts: {
+    method?: string;
+    body?: unknown;
+    onFrame: (frame: SseFrame) => void;
+    onError?: (err: Error) => void;
+    onClose?: () => void;
+  },
+): () => void {
+  const state = hydrateFromStorage();
+  const controller = new AbortController();
+
+  void (async () => {
+    try {
+      const res = await fetch(`${API_URL}${path}`, {
+        method: opts.method ?? "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(state.accessToken ? { Authorization: `Bearer ${state.accessToken}` } : {}),
+          ...(state.orgId ? { "X-Org-Id": state.orgId } : {}),
+        },
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        let message = `Stream failed with status ${res.status}`;
+        try {
+          const data = (await res.json()) as { detail?: unknown; message?: string };
+          if (typeof data.detail === "string") message = data.detail;
+          else if (typeof data.message === "string") message = data.message;
+        } catch {
+          // non-JSON error body
+        }
+        throw new ApiError(res.status, message);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() ?? "";
+        for (const raw of frames) {
+          const frame = parseSseFrame(raw);
+          if (frame) opts.onFrame(frame);
+        }
+      }
+      opts.onClose?.();
+    } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        opts.onClose?.();
+        return;
+      }
+      opts.onError?.(err instanceof Error ? err : new Error(String(err)));
+    }
+  })();
+
+  return () => controller.abort();
+}
+
+function parseSseFrame(raw: string): SseFrame | null {
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+  }
+  if (dataLines.length === 0) return null;
+  const joined = dataLines.join("\n");
+  try {
+    return { event, data: JSON.parse(joined) as Record<string, unknown> };
+  } catch {
+    return { event, data: { text: joined } };
+  }
+}
+
 export const api = {
   get: <T>(path: string, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: "GET" }),

@@ -1,0 +1,25 @@
+# Python (reinstalled inside the image)
+__pycache__
+*.py[cod]
+.venv
+venv
+*.egg-info
+.pytest_cache
+.coverage
+htmlcov
+
+# Local env & secrets
+.env
+*.db
+**/secrets/
+**/*.key
+**/*.cert
+
+# Logs
+*.log
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+*.swp

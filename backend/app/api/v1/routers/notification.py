@@ -14,6 +14,20 @@ from app.repositories.notification import NotificationRepository
 
 router = APIRouter(prefix="/notification", tags=["Notification"])
 
+def _serialize_item(obj):
+    return NotificationResponse.model_validate(obj, from_attributes=True).model_dump(mode="json")
+
+
+def _serialize_page(pag):
+    return {
+        "items": [_serialize_item(i) for i in (pag.items or [])],
+        "total": pag.total,
+        "page": pag.page,
+        "page_size": pag.page_size,
+        "total_pages": pag.total_pages,
+    }
+
+
 @router.get("")
 async def list_notifications(
     page: int = Query(1, ge=1, description="Page number"),
@@ -29,7 +43,7 @@ async def list_notifications(
     pag = await svc.list(page=page, page_size=page_size,
         sort_by=sort_by, sort_order=sort_order,
     )
-    return pag
+    return _serialize_page(pag)
 
 @router.get("/search", response_model=PaginatedResponse)
 async def search_notifications(
@@ -43,10 +57,13 @@ async def search_notifications(
     svc = NotificationService(NotificationRepository(db))
     items, total = await svc.search(query=q, page=page, page_size=page_size
 )
-    return PaginatedResponse(
-        items=items, total=total, page=page,
-        page_size=page_size, total_pages=(total + page_size - 1) // max(page_size, 1),
-    )
+    return {
+        "items": [_serialize_item(i) for i in (items or [])],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // max(page_size, 1),
+    }
 
 @router.post("", response_model=NotificationResponse, status_code=201,
          summary="Create Notification", operation_id="create_notification")

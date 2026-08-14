@@ -1,16 +1,17 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 class SubscriptionCreate(BaseModel):
-    organization_id: str
+    organization_id: Union[str, UUID]
     plan_id: str
     current_period_start: datetime
     current_period_end: datetime
 
 
 class SubscriptionUpdate(BaseModel):
-    organization_id: Optional[str] = None
+    organization_id: Optional[Union[str, UUID]] = None
     plan_id: Optional[str] = None
     status: Optional[str] = None
     current_period_start: Optional[datetime] = None
@@ -21,22 +22,22 @@ class SubscriptionUpdate(BaseModel):
 
 
 class SubscriptionResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    organization_id: str
-    plan_id: str
-    status: str
-    current_period_start: datetime
-    current_period_end: datetime
-    trial_end: datetime
-    cancelled_at: datetime
-    deleted_at: datetime
+    organization_id: Union[str, UUID]
+    plan_id: Optional[str] = None
+    status: Optional[str] = None
+    current_period_start: Optional[datetime] = None
+    current_period_end: Optional[datetime] = None
+    trial_end: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
 
 
 class SubscriptionPublic(BaseModel):
-    id: str
-    organization_id: Optional[str] = None
+    id: Union[str, UUID]
+    organization_id: Optional[Union[str, UUID]] = None
     plan_id: Optional[str] = None
     status: Optional[str] = None
     current_period_start: Optional[datetime] = None

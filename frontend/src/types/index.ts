@@ -131,6 +131,22 @@ export interface Metric {
   format?: "number" | "currency" | "percent" | "compact";
 }
 
+export interface ChatStage {
+  stage: string;
+  label: string;
+}
+
+export interface PlanMetrics {
+  confidence?: number;
+  estimatedCost?: number;
+  estimatedLatencyMs?: number;
+  provider?: string;
+  model?: string;
+  latencyMs?: number;
+  nodeCount?: number;
+  edgeCount?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -138,8 +154,12 @@ export interface ChatMessage {
   timestamp: string;
   streaming?: boolean;
   thinking?: boolean;
+  stages?: ChatStage[];
+  activeStage?: string;
   clarifications?: string[];
   workflowPreview?: WorkflowPreview;
+  planMetrics?: PlanMetrics;
+  error?: string;
 }
 
 export interface WorkflowPreview {

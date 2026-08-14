@@ -158,7 +158,8 @@ def _token_response(user: User, org: Optional[Dict[str, Any]] = None) -> Dict[st
     }
 
 
-def _user_from_id(repo: UserRepository, raw_id: Any) -> User:
+async def _user_from_id(repo: UserRepository, raw_id: Any) -> User:
+    """Load a user by raw ID, normalizing into a UUID and awaiting the DB."""
     try:
         user_id = UUID(str(raw_id))
     except (ValueError, TypeError):
@@ -166,7 +167,7 @@ def _user_from_id(repo: UserRepository, raw_id: Any) -> User:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
         )
-    user = repo.get_by_uuid(user_id)
+    user = await repo.get_by_uuid(user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -290,7 +291,7 @@ async def me(
 ) -> Dict[str, Any]:
     """Return the authenticated user's profile (plus tenant context)."""
     repo = UserRepository(db)
-    user = _user_from_id(repo, current_user.id)
+    user = await _user_from_id(repo, current_user.id)
     payload = _user_payload(user)
     org = await _resolve_org(db, user.id)
     if org:
@@ -307,7 +308,7 @@ async def password_change(
 ) -> Dict[str, str]:
     """Verify the current password and set a new one."""
     repo = UserRepository(db)
-    user = _user_from_id(repo, current_user.id)
+    user = await _user_from_id(repo, current_user.id)
     if not user.password_hash or not verify_password(body.old_password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

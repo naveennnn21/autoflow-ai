@@ -1,0 +1,50 @@
+# Temporary full-stack test harness (alternate host ports).
+# Uses the images already built by docker compose; deleted after testing.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: autoflow
+      POSTGRES_PASSWORD: autoflow_secret_dev
+      POSTGRES_DB: autoflow
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: autoflow-ai-backend:latest
+    environment:
+      DATABASE_URL: postgresql+asyncpg://autoflow:autoflow_secret_dev@postgres:5432/autoflow
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-in-production-abc123xyz
+      ENVIRONMENT: development
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    image: autoflow-ai-frontend:latest
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend

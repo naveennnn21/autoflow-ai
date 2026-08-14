@@ -1,18 +1,19 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.execution import ExecutionStatus
 
 class ExecutionCreate(BaseModel):
-    workflow_id: str
-    organization_id: str
+    workflow_id: Union[str, UUID]
+    organization_id: Union[str, UUID]
 
 
 class ExecutionUpdate(BaseModel):
-    workflow_id: Optional[str] = None
-    organization_id: Optional[str] = None
-    triggered_by: Optional[str] = None
+    workflow_id: Optional[Union[str, UUID]] = None
+    organization_id: Optional[Union[str, UUID]] = None
+    triggered_by: Optional[Union[str, UUID]] = None
     status: Optional[ExecutionStatus] = None
     trigger_type: Optional[str] = None
     input_data: Optional[dict] = None
@@ -24,12 +25,12 @@ class ExecutionUpdate(BaseModel):
 
 
 class ExecutionResponse(BaseModel):
-    id: str
+    id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    workflow_id: Optional[str] = None
-    organization_id: Optional[str] = None
-    triggered_by: Optional[str] = None
+    workflow_id: Optional[Union[str, UUID]] = None
+    organization_id: Optional[Union[str, UUID]] = None
+    triggered_by: Optional[Union[str, UUID]] = None
     status: Optional[ExecutionStatus] = None
     trigger_type: Optional[str] = None
     input_data: Optional[dict] = None
@@ -41,10 +42,10 @@ class ExecutionResponse(BaseModel):
 
 
 class ExecutionPublic(BaseModel):
-    id: str
-    workflow_id: Optional[str] = None
-    organization_id: Optional[str] = None
-    triggered_by: Optional[str] = None
+    id: Union[str, UUID]
+    workflow_id: Optional[Union[str, UUID]] = None
+    organization_id: Optional[Union[str, UUID]] = None
+    triggered_by: Optional[Union[str, UUID]] = None
     status: Optional[ExecutionStatus] = None
     trigger_type: Optional[str] = None
     input_data: Optional[dict] = None

@@ -19,7 +19,7 @@ def py_type(sql_type, enum_name=None):
     if enum_name:
         return enum_name
     t = sql_type.lower() if sql_type else 'str'
-    if 'uuid' in t: return 'str'
+    if 'uuid' in t: return 'Union[str, UUID]'
     if 'string' in t or 'text' in t: return 'str'
     if 'integer' in t: return 'int'
     if 'float' in t: return 'float'
@@ -284,7 +284,8 @@ COMMON_TYPES = {
 
 BASE_IMPORTS = J([
     'from datetime import datetime',
-    'from typing import Any, Dict, List, Optional',
+    'from typing import Any, Dict, List, Optional, Union',
+    'from uuid import UUID',
     'from pydantic import BaseModel, Field',
 ])
 
@@ -343,19 +344,22 @@ def make_schema_file(key, schema):
     
     # Response schema - all fields (except sensitive)
     parts.append(f'class {key_to_class(key)}Response(BaseModel):')
-    parts.append('    id: str')
+    parts.append('    id: Union[str, UUID]')
     parts.append('    created_at: datetime')
     parts.append('    updated_at: datetime')
     for name, st, en, req, sens in fields:
         if not sens:
             pt = py_type(st, en)
-            parts.append(make_field(name, pt, required=True))
+            # Data fields are Optional: DB nullability is independent of the
+            # create-time 'req' flag (e.g. user.full_name is req=True but the
+            # column is nullable). id/created_at/updated_at are always set.
+            parts.append(make_field(name, pt, required=False))
     parts.append('')
     parts.append('')
     
     # Public schema - safe fields only
     parts.append(f'class {key_to_class(key)}Public(BaseModel):')
-    parts.append('    id: str')
+    parts.append('    id: Union[str, UUID]')
     for name, st, en, req, sens in fields:
         if not sens:
             pt = py_type(st, en)

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, History, Square } from "lucide-react";
 import { useChat } from "@/stores/chat";
 import { Button } from "@/components/ui/button";
 
@@ -16,12 +16,16 @@ const suggestions = [
 export function ChatInput() {
   const send = useChat((s) => s.send);
   const isStreaming = useChat((s) => s.isStreaming);
+  const cancel = useChat((s) => s.cancel);
+  const history = useChat((s) => s.history);
   const [value, setValue] = React.useState("");
+  const [showHistory, setShowHistory] = React.useState(false);
 
   const submit = (text: string) => {
     const t = text.trim();
     if (!t || isStreaming) return;
     setValue("");
+    setShowHistory(false);
     send(t);
   };
 
@@ -45,20 +49,33 @@ export function ChatInput() {
         />
         <div className="flex items-center justify-between px-3 pb-1 pt-0">
           <span className="text-[11px] text-muted-foreground/50">Enter to send · Shift+Enter for new line</span>
-          <Button
-            size="icon"
-            onClick={() => submit(value)}
-            disabled={!value.trim() || isStreaming}
-            aria-label="Send"
-            className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)] transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
+          {isStreaming ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={cancel}
+              aria-label="Stop generating"
+              className="h-9 gap-1.5 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Square className="h-3.5 w-3.5 fill-current" />
+              Stop
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              onClick={() => submit(value)}
+              disabled={!value.trim()}
+              aria-label="Send"
+              className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)] transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Suggestions */}
-      <div className="flex flex-wrap gap-2">
+      {/* Suggestions + history */}
+      <div className="flex flex-wrap items-center gap-2">
         {suggestions.map((s) => (
           <button
             key={s}
@@ -69,6 +86,31 @@ export function ChatInput() {
             {s}
           </button>
         ))}
+        {history.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowHistory((v) => !v)}
+              disabled={isStreaming}
+              className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:text-foreground disabled:opacity-50"
+            >
+              <History className="h-3 w-3" />
+              History
+            </button>
+            {showHistory && (
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-72 space-y-0.5 rounded-xl border border-border bg-card p-1.5 shadow-xl">
+                {history.map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => submit(h)}
+                    className="block w-full truncate rounded-lg px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
