@@ -14,7 +14,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from app.runtime.executor import WorkflowExecutor
+from app.runtime.executor import NodeResult, WorkflowExecutor
 from app.runtime.state import ExecutionState
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,22 @@ def _shared_manager():
 # Connector-aware node handlers
 # ---------------------------------------------------------------------------
 
+def catalog_auth(connector_def: Optional[Dict[str, Any]]) -> str:
+    """Normalize the auth kind of a connector catalog entry.
+
+    Catalog entries expose ``authentication`` as a dict (from connector
+    metadata) with a ``type`` key; legacy entries may carry a plain
+    ``auth`` string. Returns a lowercase auth kind, defaulting to
+    ``"none"`` when absent.
+    """
+    if not connector_def:
+        return "none"
+    auth = connector_def.get("authentication") or connector_def.get("auth")
+    if isinstance(auth, dict):
+        return str(auth.get("type") or "none").lower()
+    return str(auth or "none").lower()
+
+
 def _connector_handler(node, context: dict, catalog: Dict[str, Dict]) -> dict:
     """Execute a connector action through the connector framework.
 
@@ -54,10 +70,29 @@ def _connector_handler(node, context: dict, catalog: Dict[str, Dict]) -> dict:
     config = node.config or {}
     connector = str(config.get("connector") or "")
     action = str(config.get("action") or "")
-    family = node.node_type.split(":")[0]
+    parts = node.node_type.split(":")
+    family = parts[0]
 
     if family in ("trigger", "condition", "notification", "transform", "wait"):
         return {}
+
+    # The Prompt Compiler's runtime definitions encode the connector action
+    # as ``action:<connector>:<action>`` in the node type (the runtime
+    # compiler merges ``subtype`` into ``node_type``); the ai_workflow
+    # router also writes connector/action into config. Resolve from either
+    # source so spec-compiled workflows reach the real connector handler.
+    if (not connector or not action) and len(parts) >= 2:
+        if parts[0] == "action" and len(parts) >= 3:
+            # ``action:<connector>:<action>`` from the Prompt Compiler.
+            connector = connector or parts[1]
+            action = action or parts[2]
+        elif parts[0] != "action":
+            # ``<connector>:<action>`` encoding.
+            connector = connector or parts[0]
+            action = action or parts[1]
+        # ``action:<name>`` (a built-in template subtype such as
+        # ``action:send_email``) is NOT a connector action - leave the
+        # connector empty so the missing-connector error stays accurate.
 
     connector_def = catalog.get(connector.lower()) or {}
     if not connector_def:
@@ -113,7 +148,7 @@ def _connector_handler(node, context: dict, catalog: Dict[str, Dict]) -> dict:
     except Exception as exc:  # noqa: BLE001 - fall through to schema resolution
         logger.debug("connector framework execution unavailable: %s", exc)
 
-    auth_type = str(connector_def.get("auth") or "none")
+    auth_type = catalog_auth(connector_def)
     health = str(connector_def.get("health") or "unknown")
     if auth_type in ("none", "public"):
         return {
@@ -225,6 +260,19 @@ class StreamingExecutor(WorkflowExecutor):
             "execution_id": self._execution_id,
         })
         result = await super()._run_node(node, state)
+        # A connector handler that explicitly returns ``ok: False`` (e.g.
+        # missing credentials, unregistered connector) must fail the node -
+        # never let the run silently "complete" while the step did nothing.
+        if (result.ok and isinstance(result.output, dict)
+                and result.output.get("ok") is False):
+            result = NodeResult(
+                node_id=result.node_id,
+                status="failure",
+                output=result.output,
+                error=str(result.output.get("error") or "step failed"),
+                attempts=result.attempts,
+                duration_ms=result.duration_ms,
+            )
         await self._publish({
             "type": "node",
             "node_id": node.node_id,
@@ -248,7 +296,26 @@ class StreamingExecutor(WorkflowExecutor):
             state = await super().execute(definition, inputs=inputs,
                                           execution_id=execution_id)
         except asyncio.CancelledError:
-            state = self._cancelled_state(definition)
+            state = self._live_state() or self._cancelled_state(definition)
+        # Publish the terminal state immediately so live SSE consumers do
+        # not wait out the queue idle timeout for the run to be noticed.
+        await self._publish_state(state)
+        return state
+
+    async def _publish_state(self, state: ExecutionState) -> None:
+        await self._publish(_state_event(state))
+
+    def _live_state(self) -> Optional[ExecutionState]:
+        """The in-flight state captured by the state manager, marked
+        cancelled. Preserves the partial node progress a cancelled run
+        already accumulated (the detail endpoint and live view render
+        which nodes completed before the cancel)."""
+        state = self.state_manager.get(self._execution_id)
+        if state is None:
+            return None
+        state.status = "cancelled"
+        state.error = "cancelled by user"
+        state.updated_at = datetime.now(timezone.utc)
         return state
 
     def _cancelled_state(self, definition: dict) -> ExecutionState:
@@ -266,8 +333,28 @@ class StreamingExecutor(WorkflowExecutor):
 
 
 # ---------------------------------------------------------------------------
-# Run registry + orchestration
+# State event serialization + run registry + orchestration
 # ---------------------------------------------------------------------------
+
+def _state_event(state: ExecutionState) -> Dict[str, Any]:
+    """The SSE ``state`` frame payload for a terminal ExecutionState."""
+    return {
+        "type": "state",
+        "execution_id": state.execution_id,
+        "workflow_id": state.workflow_id,
+        "version": state.version,
+        "status": state.status,
+        "error": state.error,
+        "node_states": dict(state.node_states),
+        "node_results": dict(state.node_results),
+        "context": dict(state.context),
+        "started_at": state.started_at.isoformat()
+        if state.started_at else None,
+        "duration_ms": round(
+            (datetime.now(timezone.utc) - state.created_at).total_seconds()
+            * 1000, 1,
+        ),
+    }
 
 class RunHandle:
     """Handle for an in-flight (or finished) workflow run."""
@@ -387,23 +474,7 @@ async def stream_events(execution_id: str,
 
     state = run.result_state()
     if state is not None:
-        yield {
-            "type": "state",
-            "execution_id": state.execution_id,
-            "workflow_id": state.workflow_id,
-            "version": state.version,
-            "status": state.status,
-            "error": state.error,
-            "node_states": dict(state.node_states),
-            "node_results": dict(state.node_results),
-            "context": dict(state.context),
-            "started_at": state.started_at.isoformat()
-            if state.started_at else None,
-            "duration_ms": round(
-                (datetime.now(timezone.utc) - state.created_at).total_seconds()
-                * 1000, 1,
-            ),
-        }
+        yield _state_event(state)
     else:
         yield {"type": "error", "error": "run produced no final state",
                "execution_id": execution_id}

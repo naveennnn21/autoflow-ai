@@ -170,6 +170,28 @@ class BaseService(IService[ModelType, DTOType]):
             else:
                 self._cache.clear()
 
+    def _in_other_org(self, obj: Any, organization_id: Any) -> bool:
+        """Multi-tenant guard: True when a row belongs to another org.
+
+        Applied to get/update/delete so an authenticated member of one
+        organization can never read or mutate rows owned by another
+        organization (works for every tenant-scoped generated entity).
+        Internal flows that pass organization_id=None are unaffected.
+
+        Org-scoped access returns None/False (routers surface 404) on
+        purpose: hiding the row's existence is safer than revealing it
+        via a 403. The _authorize_* hooks still raise PermissionError
+        for same-org authorization failures.
+        """
+        if organization_id is None or obj is None:
+            return False
+        if not hasattr(self.repository.model_class, "organization_id"):
+            return False
+        own = getattr(obj, "organization_id", None)
+        if own is None:
+            return False
+        return str(own) != str(organization_id)
+
     # --- Auth hooks (override in subclasses) ---
 
     def _authorize_create(self, data: DTOType, actor_id: Any = None,
@@ -290,8 +312,12 @@ class BaseService(IService[ModelType, DTOType]):
         cache_key = self._cache_key("get", id)
         cached = self._cache_get(cache_key)
         if cached is not None:
+            if self._in_other_org(cached, organization_id):
+                return None
             return cached
         obj = await self.repository.get(id)
+        if obj is not None and self._in_other_org(obj, organization_id):
+            return None
         if obj and not self._authorize_read(obj, actor_id):
             raise PermissionError("Not authorized to read")
         if obj is not None and self.CACHE_ENABLED:
@@ -307,6 +333,8 @@ class BaseService(IService[ModelType, DTOType]):
                      organization_id: Any = None) -> Optional[ModelType]:
         obj = await self.repository.get(id)
         if not obj:
+            return None
+        if self._in_other_org(obj, organization_id):
             return None
         if not self._authorize_update(obj, data, actor_id):
             raise PermissionError("Not authorized to update")
@@ -330,6 +358,8 @@ class BaseService(IService[ModelType, DTOType]):
         obj = await self.repository.get(id)
         if not obj:
             return False
+        if self._in_other_org(obj, organization_id):
+            return False
         if not self._authorize_delete(obj, actor_id):
             raise PermissionError("Not authorized to delete")
         async with self.repository.transaction():
@@ -349,14 +379,20 @@ class BaseService(IService[ModelType, DTOType]):
         return count
 
     @retry(max_attempts=3)
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[ModelType]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                      organization_id: Any = None) -> Optional[ModelType]:
+        obj = await self.repository.get(id)
+        if obj is None:
+            return None
+        if self._in_other_org(obj, organization_id):
+            return None
         async with self.repository.transaction():
-            obj = await self.repository.restore(id, commit=False)
+            restored = await self.repository.restore(id, commit=False)
         self._cache_invalidate()
-        await self._log_audit("restore", id, {}, actor_id, None)
+        await self._log_audit("restore", id, {}, actor_id, organization_id)
         await self._publish_event(f"{self.repository.model_class.__name__}.Restored",
-                                 id, {}, actor_id, None)
-        return obj
+                                 id, {}, actor_id, organization_id)
+        return restored
 
     @retry(max_attempts=2)
     async def list(self, page: int = 1, page_size: int = 20,

@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_teams(
     page: int = Query(1, ge=1, description="Page number"),
@@ -83,6 +82,20 @@ async def create_team(
 , organization_id=org_id
 )
 
+@router.get("/count",
+    summary="Count teams", operation_id="count_teams")
+async def count_teams(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+):
+    """Count total Team records."""
+    svc = TeamService(TeamRepository(db))
+    total = await svc.count(
+        organization_id=org_id,
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=TeamResponse,
         summary="Get Team by ID", operation_id="get_team")
 async def get_team(
@@ -128,18 +141,9 @@ async def delete_team(
 ):
     """Hard delete a Team."""
     svc = TeamService(TeamRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
+    result = await svc.delete(id, hard=True, actor_id=current_user.id
+, organization_id=org_id
+)
     if not result:
         raise HTTPException(status_code=404, detail="Team not found")
     return None
-@router.get("/count",
-    summary="Count teams", operation_id="count_teams")
-async def count_teams(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-    org_id: Any = Depends(get_current_organization),
-):
-    """Count total Team records."""
-    svc = TeamService(TeamRepository(db))
-    total = await svc.count()
-    return {"count": total}

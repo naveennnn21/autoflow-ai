@@ -18,8 +18,8 @@ class TeamMemberResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    team_id: Union[str, UUID]
-    user_id: Union[str, UUID]
+    team_id: Optional[Union[str, UUID]] = None
+    user_id: Optional[Union[str, UUID]] = None
     role: Optional[str] = None
 
 

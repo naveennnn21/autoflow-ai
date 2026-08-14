@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_oauth_tokens(
     page: int = Query(1, ge=1, description="Page number"),
@@ -77,6 +76,18 @@ async def create_oauth_token(
     return await svc.create(data, actor_id=current_user.id
 )
 
+@router.get("/count",
+    summary="Count oauth_tokens", operation_id="count_oauth_tokens")
+async def count_oauth_tokens(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Count total OAuthToken records."""
+    svc = OAuthTokenService(OAuthTokenRepository(db))
+    total = await svc.count(
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=OAuthTokenResponse,
         summary="Get OAuthToken by ID", operation_id="get_oauth_token")
 async def get_oauth_token(
@@ -117,17 +128,8 @@ async def delete_oauth_token(
 ):
     """Hard delete a OAuthToken."""
     svc = OAuthTokenService(OAuthTokenRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
+    result = await svc.delete(id, hard=True, actor_id=current_user.id
+)
     if not result:
         raise HTTPException(status_code=404, detail="OAuthToken not found")
     return None
-@router.get("/count",
-    summary="Count oauth_tokens", operation_id="count_oauth_tokens")
-async def count_oauth_tokens(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """Count total OAuthToken records."""
-    svc = OAuthTokenService(OAuthTokenRepository(db))
-    total = await svc.count()
-    return {"count": total}

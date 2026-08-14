@@ -82,6 +82,17 @@ export interface ControlResult {
   execution_id: string;
   action: string;
   status: string;
+  version?: number;
+  retry_of?: string;
+  workflow_id?: string;
+}
+
+export interface RestoreResult {
+  ok: boolean;
+  workflow_id: string;
+  restored_from_version: number;
+  new_version_number: number;
+  status: string;
 }
 
 export interface RunEventHandlers {
@@ -131,6 +142,11 @@ export const aiWorkflowApi = {
 
   control: (executionId: string, action: "cancel" | "pause" | "resume" | "retry") =>
     api.post<ControlResult>(`/ai_workflow/executions/${executionId}/control`, { action }),
+
+  restore: (workflowId: string, version: number) =>
+    api.post<RestoreResult>(
+      `/ai_workflow/workflows/${workflowId}/versions/${version}/restore`,
+    ),
 
   streamExecution: (executionId: string, handlers: RunEventHandlers) =>
     streamSse(`/ai_workflow/executions/${executionId}/stream`, {

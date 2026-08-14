@@ -25,7 +25,7 @@ class SubscriptionResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    organization_id: Union[str, UUID]
+    organization_id: Optional[Union[str, UUID]] = None
     plan_id: Optional[str] = None
     status: Optional[str] = None
     current_period_start: Optional[datetime] = None

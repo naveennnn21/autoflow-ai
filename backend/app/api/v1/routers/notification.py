@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_notifications(
     page: int = Query(1, ge=1, description="Page number"),
@@ -77,6 +76,18 @@ async def create_notification(
     return await svc.create(data, actor_id=current_user.id
 )
 
+@router.get("/count",
+    summary="Count notifications", operation_id="count_notifications")
+async def count_notifications(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Count total Notification records."""
+    svc = NotificationService(NotificationRepository(db))
+    total = await svc.count(
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=NotificationResponse,
         summary="Get Notification by ID", operation_id="get_notification")
 async def get_notification(
@@ -117,17 +128,8 @@ async def delete_notification(
 ):
     """Hard delete a Notification."""
     svc = NotificationService(NotificationRepository(db))
-    result = await svc.delete(id, hard=True, actor_id=current_user.id)
+    result = await svc.delete(id, hard=True, actor_id=current_user.id
+)
     if not result:
         raise HTTPException(status_code=404, detail="Notification not found")
     return None
-@router.get("/count",
-    summary="Count notifications", operation_id="count_notifications")
-async def count_notifications(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """Count total Notification records."""
-    svc = NotificationService(NotificationRepository(db))
-    total = await svc.count()
-    return {"count": total}

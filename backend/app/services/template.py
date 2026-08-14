@@ -50,9 +50,11 @@ class TemplateService(BaseService[Template, TemplateCreate]):
                                   organization_id=organization_id)
 
 
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[Template]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[Template]:
         """Restore a soft-deleted template."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 
 
     async def search(

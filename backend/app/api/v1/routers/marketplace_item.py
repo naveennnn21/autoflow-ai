@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_marketplace_items(
     page: int = Query(1, ge=1, description="Page number"),
@@ -77,6 +76,18 @@ async def create_marketplace_item(
     return await svc.create(data, actor_id=current_user.id
 )
 
+@router.get("/count",
+    summary="Count marketplace_items", operation_id="count_marketplace_items")
+async def count_marketplace_items(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Count total MarketplaceItem records."""
+    svc = MarketplaceItemService(MarketplaceItemRepository(db))
+    total = await svc.count(
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=MarketplaceItemResponse,
         summary="Get MarketplaceItem by ID", operation_id="get_marketplace_item")
 async def get_marketplace_item(
@@ -117,7 +128,8 @@ async def delete_marketplace_item(
 ):
     """Soft delete a MarketplaceItem."""
     svc = MarketplaceItemService(MarketplaceItemRepository(db))
-    result = await svc.delete(id, actor_id=current_user.id)
+    result = await svc.delete(id, actor_id=current_user.id
+)
     if not result:
         raise HTTPException(status_code=404, detail="MarketplaceItem not found")
     return None
@@ -130,17 +142,8 @@ async def restore_marketplace_item(
 ):
     """Restore a soft-deleted MarketplaceItem."""
     svc = MarketplaceItemService(MarketplaceItemRepository(db))
-    obj = await svc.restore(id, actor_id=current_user.id)
+    obj = await svc.restore(id, actor_id=current_user.id
+)
     if not obj:
         raise HTTPException(status_code=404, detail="MarketplaceItem not found")
     return obj
-@router.get("/count",
-    summary="Count marketplace_items", operation_id="count_marketplace_items")
-async def count_marketplace_items(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """Count total MarketplaceItem records."""
-    svc = MarketplaceItemService(MarketplaceItemRepository(db))
-    total = await svc.count()
-    return {"count": total}

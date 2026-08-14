@@ -24,8 +24,8 @@ class InvoiceResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    organization_id: Union[str, UUID]
-    subscription_id: Union[str, UUID]
+    organization_id: Optional[Union[str, UUID]] = None
+    subscription_id: Optional[Union[str, UUID]] = None
     amount: Optional[float] = None
     currency: Optional[str] = None
     status: Optional[str] = None

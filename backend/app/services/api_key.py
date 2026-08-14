@@ -50,9 +50,30 @@ class APIKeyService(BaseService[APIKey, APIKeyCreate]):
                                   organization_id=organization_id)
 
 
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[APIKey]:
+    async def create(self, data: APIKeyCreate, actor_id: Any = None,
+                     organization_id: Any = None) -> APIKey:
+        """Create a apikey, deriving ``key_hash`` when absent.
+
+        The model requires a unique ``key_hash`` but the client never sends
+        one (it only provides ``key_prefix``). Derive a salted digest
+        server-side so the NOT NULL/unique constraint is always satisfied.
+        """
+        dto = self._to_dict(data)
+        if not dto.get("key_hash"):
+            import hashlib
+            import secrets
+            dto["key_hash"] = hashlib.sha256(
+                f"{dto.get('key_prefix', '')}.{secrets.token_hex(16)}".encode(),
+            ).hexdigest()
+        return await super().create(dto, actor_id=actor_id,
+                                     organization_id=organization_id)
+
+
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[APIKey]:
         """Restore a soft-deleted apikey."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 
 
     async def search(

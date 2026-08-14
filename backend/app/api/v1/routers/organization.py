@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_organizations(
     page: int = Query(1, ge=1, description="Page number"),
@@ -77,6 +76,18 @@ async def create_organization(
     return await svc.create(data, actor_id=current_user.id
 )
 
+@router.get("/count",
+    summary="Count organizations", operation_id="count_organizations")
+async def count_organizations(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Count total Organization records."""
+    svc = OrganizationService(OrganizationRepository(db))
+    total = await svc.count(
+    )
+    return {"count": total}
+
 @router.get("/{id}", response_model=OrganizationResponse,
         summary="Get Organization by ID", operation_id="get_organization")
 async def get_organization(
@@ -117,7 +128,8 @@ async def delete_organization(
 ):
     """Soft delete a Organization."""
     svc = OrganizationService(OrganizationRepository(db))
-    result = await svc.delete(id, actor_id=current_user.id)
+    result = await svc.delete(id, actor_id=current_user.id
+)
     if not result:
         raise HTTPException(status_code=404, detail="Organization not found")
     return None
@@ -130,17 +142,8 @@ async def restore_organization(
 ):
     """Restore a soft-deleted Organization."""
     svc = OrganizationService(OrganizationRepository(db))
-    obj = await svc.restore(id, actor_id=current_user.id)
+    obj = await svc.restore(id, actor_id=current_user.id
+)
     if not obj:
         raise HTTPException(status_code=404, detail="Organization not found")
     return obj
-@router.get("/count",
-    summary="Count organizations", operation_id="count_organizations")
-async def count_organizations(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """Count total Organization records."""
-    svc = OrganizationService(OrganizationRepository(db))
-    total = await svc.count()
-    return {"count": total}

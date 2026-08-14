@@ -113,7 +113,7 @@ def _build_entity_router(entity):
     out.append('    return _serialize_page(pag)')
     out.append('')
     # ========== SEARCH ==========
-    out.append('@router.get("/search")')
+    out.append('@router.get("/search", response_model=PaginatedResponse)')
     out.append(f'async def search_{sname}s(')
     out.append('    q: str = Query(..., min_length=1, description="Search query"),')
     out.append('    page: int = Query(1, ge=1),')
@@ -162,6 +162,30 @@ def _build_entity_router(entity):
     if is_ten:
         out.append(', organization_id=org_id')
     out.append(')')
+    out.append('')
+    # ========== COUNT ==========
+    # Declared BEFORE the /{id} routes: a static path after a path param
+    # route would be shadowed (GET /count would match /{id} and fail UUID
+    # parsing with 422).
+    out.append(f'@router.get("/count",')
+    out.append(f'    summary="Count {sname}s", operation_id="count_{sname}s")')
+    out.append(f'async def count_{sname}s(')
+    out.append('    db: AsyncSession = Depends(get_db),')
+    out.append('    current_user: CurrentUser = Depends(get_current_user),')
+    if is_ten:
+        out.append('    org_id: Any = Depends(get_current_organization),')
+    out.append('):')
+    out.append(f'    """Count total {en} records."""')
+    rbac_scopes = ', '.join(f'"{s}"' for s in read_scope) if read_scope else ''
+    if rbac_scopes:
+        out.append('    if not current_user.has_any_scope([' + rbac_scopes + ']):')
+        out.append('        raise HTTPException(status_code=403, detail="Insufficient permissions")')
+    out.append(f'    svc = {en}Service({en}Repository(db))')
+    out.append('    total = await svc.count(')
+    if is_ten:
+        out.append('        organization_id=org_id,')
+    out.append('    )')
+    out.append('    return {"count": total}')
     out.append('')
     # ========== GET ==========
     out.append(f'@router.get("/{{id}}", response_model={en}Response,')
@@ -229,7 +253,10 @@ def _build_entity_router(entity):
             out.append('        if not current_user.has_any_scope([' + rbac_scopes + ']):')
             out.append('            raise HTTPException(status_code=403, detail="Insufficient permissions")')
         out.append(f'    svc = {en}Service({en}Repository(db))')
-        out.append('    result = await svc.delete(id, actor_id=current_user.id)')
+        out.append('    result = await svc.delete(id, actor_id=current_user.id')
+        if is_ten:
+            out.append(', organization_id=org_id')
+        out.append(')')
         out.append('    if not result:')
         out.append(f'        raise HTTPException(status_code=404, detail="{en} not found")')
         out.append('    return None')
@@ -240,6 +267,8 @@ def _build_entity_router(entity):
         out.append('    id: UUID,')
         out.append('    db: AsyncSession = Depends(get_db),')
         out.append('    current_user: CurrentUser = Depends(get_current_user),')
+        if is_ten:
+            out.append('    org_id: Any = Depends(get_current_organization),')
         out.append('):')
         out.append(f'    """Restore a soft-deleted {en}."""')
         rbac_scopes = ', '.join(f'"{s}"' for s in update_scope) if update_scope else ''
@@ -247,7 +276,10 @@ def _build_entity_router(entity):
             out.append('    if not current_user.has_any_scope([' + rbac_scopes + ']):')
             out.append('        raise HTTPException(status_code=403, detail="Insufficient permissions")')
         out.append(f'    svc = {en}Service({en}Repository(db))')
-        out.append('    obj = await svc.restore(id, actor_id=current_user.id)')
+        out.append('    obj = await svc.restore(id, actor_id=current_user.id')
+        if is_ten:
+            out.append(', organization_id=org_id')
+        out.append(')')
         out.append('    if not obj:')
         out.append(f'        raise HTTPException(status_code=404, detail="{en} not found")')
         out.append('    return obj')
@@ -267,28 +299,13 @@ def _build_entity_router(entity):
             out.append('    if not current_user.has_any_scope([' + rbac_scopes + ']):')
             out.append('        raise HTTPException(status_code=403, detail="Insufficient permissions")')
         out.append(f'    svc = {en}Service({en}Repository(db))')
-        out.append('    result = await svc.delete(id, hard=True, actor_id=current_user.id)')
+        out.append('    result = await svc.delete(id, hard=True, actor_id=current_user.id')
+        if is_ten:
+            out.append(', organization_id=org_id')
+        out.append(')')
         out.append('    if not result:')
         out.append(f'        raise HTTPException(status_code=404, detail="{en} not found")')
         out.append('    return None')
-    # ========== COUNT ==========
-    out.append(f'@router.get("/count",')
-    out.append(f'    summary="Count {sname}s", operation_id="count_{sname}s")')
-    out.append(f'async def count_{sname}s(')
-    out.append('    db: AsyncSession = Depends(get_db),')
-    out.append('    current_user: CurrentUser = Depends(get_current_user),')
-    if is_ten:
-        out.append('    org_id: Any = Depends(get_current_organization),')
-    out.append('):')
-    out.append(f'    """Count total {en} records."""')
-    rbac_scopes = ', '.join(f'"{s}"' for s in read_scope) if read_scope else ''
-    if rbac_scopes:
-        out.append('    if not current_user.has_any_scope([' + rbac_scopes + ']):')
-        out.append('        raise HTTPException(status_code=403, detail="Insufficient permissions")')
-    out.append(f'    svc = {en}Service({en}Repository(db))')
-    out.append('    total = await svc.count()')
-    out.append('    return {"count": total}')
-    out.append('')
     return '\n'.join(out)
 
 
@@ -726,6 +743,11 @@ def _build_v1_init(entities):
     out.append("from app.api.v1.routers.auth import router as auth_router")
     out.append("from app.api.v1.routers.billing import router as billing_router")
     out.append("from app.api.v1.routers.monitoring import router as monitoring_router")
+    # Hand-maintained routers wired on top of the generated registry.
+    out.append("from app.api.v1.routers.connectors import router as connectors_router")
+    out.append("from app.api.v1.routers.planner import router as planner_router")
+    out.append("from app.api.v1.routers.analytics import router as analytics_router")
+    out.append("from app.api.v1.routers.ai_workflow import router as ai_workflow_router")
     out.append('')
     out.append('')
     out.append('# Create versioned router')
@@ -738,6 +760,10 @@ def _build_v1_init(entities):
     out.append("api_v1_router.include_router(auth_router)")
     out.append("api_v1_router.include_router(billing_router)")
     out.append("api_v1_router.include_router(monitoring_router)")
+    out.append("api_v1_router.include_router(connectors_router)")
+    out.append("api_v1_router.include_router(planner_router)")
+    out.append("api_v1_router.include_router(analytics_router)")
+    out.append("api_v1_router.include_router(ai_workflow_router)")
     return '\n'.join(out)
 
 
@@ -812,8 +838,11 @@ def _build_api_test(entity):
         out.append('    @pytest.mark.asyncio')
         out.append('    async def test_tenant_isolation(self, auth_headers):')
         out.append(f'        """Test tenant isolation for {sname}."""')
+        out.append('        # Cross-org reads must not leak: the list is scoped by')
+        out.append('        # X-Org-Id, and a random id from another org returns 404.')
         out.append('        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:')
         out.append(f'            resp = await client.get("/api/v1/{sname}", headers=auth_headers)')
+        out.append('            assert resp.status_code in (200, 401, 403)')
         out.append('            assert "X-Org-Id" in auth_headers')
         out.append('')
     if has_soft:

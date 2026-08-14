@@ -21,7 +21,7 @@ class ProjectResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    organization_id: Union[str, UUID]
+    organization_id: Optional[Union[str, UUID]] = None
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None

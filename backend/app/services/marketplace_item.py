@@ -37,9 +37,11 @@ class MarketplaceItemService(BaseService[MarketplaceItem, MarketplaceItemCreate]
         super().__init__(repository, audit_service=audit_service)
 
 
-    async def restore(self, id: Any, actor_id: Any = None) -> Optional[MarketplaceItem]:
+    async def restore(self, id: Any, actor_id: Any = None,
+                       organization_id: Any = None) -> Optional[MarketplaceItem]:
         """Restore a soft-deleted marketplaceitem."""
-        return await super().restore(id, actor_id=actor_id)
+        return await super().restore(id, actor_id=actor_id,
+                                      organization_id=organization_id)
 
 
     async def search(

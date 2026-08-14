@@ -28,7 +28,7 @@ class MarketplaceItemResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    author_id: Union[str, UUID]
+    author_id: Optional[Union[str, UUID]] = None
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None

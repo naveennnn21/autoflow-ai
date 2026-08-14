@@ -4,6 +4,7 @@ import * as React from "react";
 import { notFound } from "next/navigation";
 import { toast } from "sonner";
 import {
+  Activity,
   ArrowLeft,
   History,
   Loader2,
@@ -24,6 +25,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/shared/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FlowCanvas, type FlowCanvasHandle, type RunEvent } from "@/components/builder/flow-canvas";
+import {
+  ExecutionPanel,
+  type RunEntry,
+  type RunPhase,
+} from "@/components/builder/execution-panel";
+import { VersionHistory } from "@/components/builder/version-history";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/keys";
@@ -46,6 +53,11 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
   const [validation, setValidation] = React.useState<ValidateResult | null>(null);
   const [versionCount, setVersionCount] = React.useState(0);
   const abortRef = React.useRef<(() => void) | null>(null);
+  const [runEntries, setRunEntries] = React.useState<RunEntry[]>([]);
+  const [runPhase, setRunPhase] = React.useState<RunPhase>("idle");
+  const [runError, setRunError] = React.useState<string | null>(null);
+  const [logsOpen, setLogsOpen] = React.useState(false);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
 
   React.useEffect(() => {
     void params.then((p) => setId(p.id));
@@ -156,52 +168,130 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const testRun = async () => {
-    if (!workflow || running) return;
+  const beginRun = () => {
+    if (!workflow) return;
+    abortRef.current?.();
+    abortRef.current = null;
     setRunning(true);
     setPaused(false);
     setValidation(null);
+    setRunError(null);
+    setRunPhase("running");
+    setLogsOpen(true);
     canvasRef.current?.clearRun();
+    setRunEntries(
+      workflow.nodes.map((n, i) => ({
+        id: `seed_${i}_${n.id}`,
+        nodeId: n.id,
+        nodeName: n.label,
+        status: "waiting" as const,
+        time: new Date().toISOString(),
+      })),
+    );
+  };
+
+  const attachStream = (execId: string) => {
+    abortRef.current = aiWorkflowApi.streamExecution(execId, {
+      onNode: (event: RunEvent) => {
+        canvasRef.current?.applyRunEvent(event);
+        setRunEntries((prev) => [
+          ...prev,
+          {
+            id: `${event.node_id}_${event.status}_${Date.now().toString(36)}`,
+            nodeId: event.node_id,
+            nodeName: event.name ?? event.node_id,
+            status:
+              event.status === "completed"
+                ? ("completed" as const)
+                : event.status === "failed"
+                  ? ("failed" as const)
+                  : ("running" as const),
+            time: new Date().toISOString(),
+            error: event.error,
+            attempts: event.attempts,
+            durationMs: event.duration_ms,
+          },
+        ]);
+      },
+      onState: (state) => {
+        const status = String(state.status ?? "unknown");
+        if (status === "completed" || status === "failed" || status === "cancelled") {
+          setRunning(false);
+          setPaused(false);
+          setRunPhase(status as RunPhase);
+          if (status === "failed") {
+            setRunError(String(state.error ?? "A step errored — check the node status."));
+          }
+          if (status === "completed") {
+            toast.success("Execution completed", { description: "All steps finished successfully." });
+          } else if (status === "failed") {
+            toast.error("Execution failed", {
+              description: String(state.error ?? "A step errored — check the node status."),
+            });
+          } else {
+            toast.info("Execution cancelled");
+          }
+        }
+      },
+      onError: (err) => {
+        setRunning(false);
+        setRunPhase("failed");
+        setRunError(err.message);
+        toast.error("Execution error", { description: err.message });
+      },
+      onDone: () => {
+        setRunning(false);
+        setPaused(false);
+        setRunPhase((p) => (p === "running" ? "completed" : p));
+      },
+    });
+  };
+
+  const testRun = async () => {
+    if (!workflow || running) return;
+    beginRun();
     try {
       const result = await aiWorkflowApi.execute(workflow.id, buildDefinition());
       setExecutionId(result.execution_id);
       toast.success("Execution started", {
         description: `Running "${workflow.name}" through the workflow runtime…`,
       });
-      const abort = aiWorkflowApi.streamExecution(result.execution_id, {
-        onNode: (event: RunEvent) => canvasRef.current?.applyRunEvent(event),
-        onState: (state) => {
-          const status = String(state.status ?? "unknown");
-          if (status === "completed" || status === "failed" || status === "cancelled") {
-            setRunning(false);
-            setPaused(false);
-            if (status === "completed") {
-              toast.success("Execution completed", { description: "All steps finished successfully." });
-            } else if (status === "failed") {
-              toast.error("Execution failed", {
-                description: String(state.error ?? "A step errored — check the node status."),
-              });
-            } else {
-              toast.info("Execution cancelled");
-            }
-          }
-        },
-        onError: (err) => {
-          setRunning(false);
-          toast.error("Execution error", { description: err.message });
-        },
-        onDone: () => {
-          setRunning(false);
-          setPaused(false);
-        },
-      });
-      abortRef.current = abort;
+      attachStream(result.execution_id);
     } catch (err) {
       setRunning(false);
+      setRunPhase("failed");
+      setRunError(err instanceof Error ? err.message : "The execution API is unreachable.");
       toast.error("Could not start run", {
         description: err instanceof Error ? err.message : "The execution API is unreachable.",
       });
     }
+  };
+
+  const retryRun = async () => {
+    if (!workflow || !executionId || running) return;
+    beginRun();
+    try {
+      const result = await aiWorkflowApi.control(executionId, "retry");
+      setExecutionId(result.execution_id);
+      toast.success("Retry started", {
+        description: `New attempt for "${workflow.name}" (v${result.version ?? "?"})…`,
+      });
+      attachStream(result.execution_id);
+    } catch (err) {
+      setRunning(false);
+      setRunPhase("failed");
+      setRunError(err instanceof Error ? err.message : "The retry API is unreachable.");
+      toast.error("Could not retry run", {
+        description: err instanceof Error ? err.message : "The retry API is unreachable.",
+      });
+    }
+  };
+
+  const clearRunLogs = () => {
+    setRunEntries([]);
+    setRunError(null);
+    setRunPhase("idle");
+    canvasRef.current?.clearRun();
   };
 
   const cancelRun = async () => {
@@ -217,6 +307,7 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
     abortRef.current = null;
     setRunning(false);
     setPaused(false);
+    setRunPhase("cancelled");
   };
 
   const togglePause = async () => {
@@ -311,6 +402,22 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
         <div className="ml-auto flex items-center gap-1.5">
           <Button variant="ghost" size="icon-sm" aria-label="Undo"><Undo2 className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon-sm" aria-label="Redo"><Redo2 className="h-4 w-4" /></Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Live execution logs"
+            onClick={() => setLogsOpen((v) => !v)}
+          >
+            <Activity className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Workflow history"
+            onClick={() => setHistoryOpen(true)}
+          >
+            <History className="h-4 w-4" />
+          </Button>
           {validation && (
             <span
               className={cn(
@@ -367,10 +474,18 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
               </Button>
             </>
           ) : (
-            <Button variant="secondary" size="sm" onClick={() => void testRun()}>
-              <Play className="h-4 w-4" />
-              Run
-            </Button>
+            <>
+              {(runPhase === "failed" || runPhase === "cancelled") && executionId && (
+                <Button variant="outline" size="sm" onClick={() => void retryRun()}>
+                  <RefreshCw className="h-4 w-4" />
+                  Retry
+                </Button>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => void testRun()}>
+                <Play className="h-4 w-4" />
+                Run
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -390,8 +505,22 @@ export default function BuilderPage({ params }: { params: Promise<{ id: string }
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
         <FlowCanvas key={workflow.id} ref={canvasRef} workflow={workflow} />
+        <ExecutionPanel
+          open={logsOpen}
+          onToggle={setLogsOpen}
+          entries={runEntries}
+          phase={runPhase}
+          error={runError}
+          onClear={clearRunLogs}
+        />
+        <VersionHistory
+          workflowId={workflow.id}
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          onRestored={() => setVersionCount((c) => c + 1)}
+        />
       </div>
     </div>
   );

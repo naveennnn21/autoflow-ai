@@ -21,8 +21,8 @@ class ExecutionLogResponse(BaseModel):
     id: Union[str, UUID]
     created_at: datetime
     updated_at: datetime
-    execution_id: Union[str, UUID]
-    node_id: Union[str, UUID]
+    execution_id: Optional[Union[str, UUID]] = None
+    node_id: Optional[Union[str, UUID]] = None
     level: Optional[str] = None
     message: Optional[str] = None
     payload: Optional[dict] = None

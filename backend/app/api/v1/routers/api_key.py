@@ -27,7 +27,6 @@ def _serialize_page(pag):
         "total_pages": pag.total_pages,
     }
 
-
 @router.get("")
 async def list_api_keys(
     page: int = Query(1, ge=1, description="Page number"),
@@ -77,25 +76,25 @@ async def create_api_key(
     current_user: CurrentUser = Depends(get_current_user),
     org_id: Any = Depends(get_current_organization),
 ):
-    """Create a new APIKey.
-
-    Phase 1 compatibility: the model requires a unique ``key_hash`` but
-    the client never sends one, so a hash is derived from the key prefix
-    plus a server-side secret when absent.
-    """
-    if not data.key_hash:
-        import hashlib
-        import secrets
-        secret = secrets.token_hex(16)
-        data = data.model_copy(update={
-            "key_hash": hashlib.sha256(
-                f"{data.key_prefix}.{secret}".encode(),
-            ).hexdigest(),
-        })
+    """Create a new APIKey."""
     svc = APIKeyService(APIKeyRepository(db))
     return await svc.create(data, actor_id=current_user.id
 , organization_id=org_id
 )
+
+@router.get("/count",
+    summary="Count api_keys", operation_id="count_api_keys")
+async def count_api_keys(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
+):
+    """Count total APIKey records."""
+    svc = APIKeyService(APIKeyRepository(db))
+    total = await svc.count(
+        organization_id=org_id,
+    )
+    return {"count": total}
 
 @router.get("/{id}", response_model=APIKeyResponse,
         summary="Get APIKey by ID", operation_id="get_api_key")
@@ -142,7 +141,9 @@ async def delete_api_key(
 ):
     """Soft delete a APIKey."""
     svc = APIKeyService(APIKeyRepository(db))
-    result = await svc.delete(id, actor_id=current_user.id)
+    result = await svc.delete(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not result:
         raise HTTPException(status_code=404, detail="APIKey not found")
     return None
@@ -152,21 +153,13 @@ async def restore_api_key(
     id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    org_id: Any = Depends(get_current_organization),
 ):
     """Restore a soft-deleted APIKey."""
     svc = APIKeyService(APIKeyRepository(db))
-    obj = await svc.restore(id, actor_id=current_user.id)
+    obj = await svc.restore(id, actor_id=current_user.id
+, organization_id=org_id
+)
     if not obj:
         raise HTTPException(status_code=404, detail="APIKey not found")
     return obj
-@router.get("/count",
-    summary="Count api_keys", operation_id="count_api_keys")
-async def count_api_keys(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-    org_id: Any = Depends(get_current_organization),
-):
-    """Count total APIKey records."""
-    svc = APIKeyService(APIKeyRepository(db))
-    total = await svc.count()
-    return {"count": total}

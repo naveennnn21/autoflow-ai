@@ -44,6 +44,30 @@ def _postgres_available() -> bool:
 POSTGRES_AVAILABLE = _postgres_available()
 
 
+@pytest.fixture(autouse=True)
+async def _dispose_db_engine():
+    """Dispose the async engine after every test.
+
+    pytest-asyncio runs each test on a fresh function-scoped event loop,
+    but the app's SQLAlchemy engine and its asyncpg pool are process-global
+    and created when ``app.main`` is first imported. Connections checked out
+    on loop N are returned to the pool and would be reused on loop N+1,
+    where asyncpg raises ``RuntimeError: Event loop is closed`` (surfacing
+    as 500s from the ASGI app). Disposing on the test's own loop closes all
+    pooled connections while that loop is still alive, so the next test
+    starts with a clean pool bound to its own loop.
+
+    This is a test-harness fix only - production serves one event loop per
+    worker and is unaffected.
+    """
+    yield
+    try:
+        from app.core.database import engine
+        await engine.dispose()
+    except Exception:
+        pass  # teardown must never mask a test result
+
+
 def pytest_collection_modifyitems(config, items):
     """Mark API integration tests as requiring PostgreSQL when it is down."""
     if POSTGRES_AVAILABLE:
