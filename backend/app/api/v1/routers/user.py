@@ -33,7 +33,7 @@ async def list_users(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     search: Optional[str] = Query(None, description="Search query"),
     sort_by: Optional[str] = Query(None, description="Sort field"),
-    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort direction"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):

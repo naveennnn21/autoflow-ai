@@ -94,7 +94,7 @@ async def list_connectors(
     search: Optional[str] = Query(None, description="Search name/description/category"),
     category: Optional[str] = Query(None, description="Filter by category"),
     sort_by: Optional[str] = Query(None, description="Sort field"),
-    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort direction"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     current_user: CurrentUser = Depends(get_current_user),
     org_id: Any = Depends(get_current_organization),
     db: AsyncSession = Depends(get_db),

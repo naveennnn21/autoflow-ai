@@ -11,6 +11,7 @@ from typing import List, Optional
 
 from fastapi import FastAPI
 
+from app.core.config import settings
 from app.middleware import (
     request_id,
     correlation_id,
@@ -44,7 +45,7 @@ MIDDLEWARE_STACK = [
     (100, "authorization", authorization, {'default_deny': False, 'public_paths': ['/health', '/docs', '/redoc', '/openapi.json']}),
     (110, "tenant", tenant, {'header_name': 'X-Organization-Id'}),
     (120, "audit", audit, {'log_audit': True}),
-    (130, "security_headers", security_headers, {'content_security_policy': "default-src 'self'", 'frame_options': 'DENY', 'nosniff': True, 'hsts_max_age': 0}),
+    (130, "security_headers", security_headers, {'content_security_policy': "default-src 'self'", 'frame_options': 'DENY', 'nosniff': True, 'hsts_max_age': 31536000 if settings.environment == 'production' else 0}),
     (140, "cors", cors, {'allow_credentials': True, 'allow_methods': ['*'], 'allow_headers': ['*']}),
     (150, "compression", compression, {'minimum_size': 1000}),
 ]

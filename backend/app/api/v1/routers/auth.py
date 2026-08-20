@@ -266,7 +266,7 @@ async def refresh(
             detail="Invalid or expired refresh token",
         )
     repo = UserRepository(db)
-    user = repo.get_by_uuid(user_id)
+    user = await repo.get_by_uuid(user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -336,12 +336,12 @@ async def password_reset(body: PasswordResetRequest, db: AsyncSession = Depends(
             str(user.id),
             extra_claims={"type": "password_reset"},
         )
-        logging.getLogger(__name__).debug(
-            "password reset token issued for %s", user.id,
-        )
         # NOTE: no email transport is configured; wire the token into a
         # reset link and send it via the notification service in prod.
-        logging.getLogger(__name__).debug("reset token: %s", token)
+        # SECURITY: Never log the actual token value - it is a valid credential.
+        logging.getLogger(__name__).info(
+            "password reset token issued for user %s (delivery pending)", user.id,
+        )
     return {"detail": "If that email is registered, a reset link was sent"}
 
 

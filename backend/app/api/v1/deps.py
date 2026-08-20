@@ -113,7 +113,7 @@ async def pagination_params(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     sort_by: Optional[str] = Query(None, description="Field to sort by"),
-    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort direction"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     search: Optional[str] = Query(None, description="Search query"),
 ) -> dict:
     """Standard pagination and search parameters."""
