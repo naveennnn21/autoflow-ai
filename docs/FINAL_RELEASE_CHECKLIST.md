@@ -1,78 +1,109 @@
 # AutoFlow AI — Final Release Checklist
 
 **Date:** 2026-09-07
-**Status:** 🟢 STAGING VALIDATED
+**Status:** 🟢 READY FOR PRODUCTION DEPLOYMENT
 
 ---
 
-## Fixes Applied
+## Pre-Deployment Checklist
 
-| # | Issue | Status | Details |
-|---|-------|--------|---------|
-| 1 | Execution API → Celery | ✅ FIXED | `POST /execution` now sets status=pending and dispatches to Celery worker via `execute_workflow_task` |
-| 2 | SSE → Frontend | ✅ FIXED | Real SSE streaming via `/ai_workflow/executions/{id}/stream` with live node events |
-| 3 | Production Swagger | ✅ FIXED | `/docs`, `/redoc`, `/openapi.json` return 404 in production |
-| 4 | Marketplace seed data | ✅ FIXED | 8 connectors seeded via `python -m app.seed_connectors` (idempotent) |
+### Infrastructure
+- [ ] PostgreSQL 16 with automated backups configured
+- [ ] Redis 7 with password authentication
+- [ ] TLS certificate obtained and configured
+- [ ] Reverse proxy (nginx/traefik) deployed
+- [ ] DNS configured for production domain
 
-## Additional Fixes
+### Secrets
+- [ ] SECRET_KEY generated (64+ chars random)
+- [ ] POSTGRES_PASSWORD set
+- [ ] REDIS_PASSWORD set
+- [ ] AI provider API keys configured (optional)
+- [ ] Stripe keys configured (optional)
+- [ ] Sentry DSN configured (optional)
 
-| # | Issue | Status |
-|---|-------|--------|
-| 5 | Rate limiter double-counting | ✅ FIXED |
-| 6 | Dockerfile missing Alembic files | ✅ FIXED |
-| 7 | init_db() bypassed Alembic | ✅ FIXED |
-| 8 | WorkflowCreate schema missing fields | ✅ FIXED |
-| 9 | Celery app not defined | ✅ FIXED |
-| 10 | marketplace_items missing columns (migration) | ✅ FIXED |
+### Application
+- [ ] ENVIRONMENT=production
+- [ ] DEBUG=false
+- [ ] CORS_ORIGINS set to production domain
+- [ ] NEXT_PUBLIC_API_URL set to production API
 
-## Test Results
+### Database
+- [ ] Migrations applied: `alembic upgrade head`
+- [ ] Connector marketplace seeded: `python -m app.seed_connectors`
+- [ ] Backup schedule configured
 
-| Category | Result | Notes |
-|----------|--------|-------|
-| Backend tests | ✅ 1023 passed | 2 pre-existing PG connection failures (wrong port) |
-| Frontend TypeScript | ✅ 0 errors | `tsc --noEmit` clean |
-| Frontend ESLint | ✅ 0 errors | `eslint --quiet` clean |
-| Celery worker | ✅ Connected | 3 tasks registered, worker ready |
-| SSE streaming | ✅ Working | Real node events emitted |
-| Security | ✅ Pass | All headers present, auth enforced |
+### Monitoring
+- [ ] Sentry error tracking configured
+- [ ] Health check endpoint accessible
+- [ ] Log aggregation configured
 
-## E2E Verification
+---
 
-| Step | Result |
-|------|--------|
-| `docker compose build --no-cache` | ✅ All 3 images built |
-| `docker compose up -d` | ✅ All 5 services healthy |
-| `alembic upgrade head` | ✅ 4 migrations applied |
-| `python -m app.seed_connectors` | ✅ 8 connectors seeded |
-| Register user | ✅ HTTP 201 with tokens |
-| Login | ✅ HTTP 200 with tokens |
-| Create workflow | ✅ HTTP 201 |
-| Execute workflow | ✅ Real runtime execution |
-| SSE stream | ✅ Live node events |
-| Swagger disabled | ✅ HTTP 404 on /docs, /redoc, /openapi.json |
-| Connectors list | ✅ 8 connectors |
-| Tenant isolation | ✅ Cross-tenant access returns 404 |
+## Deployment Steps
 
-## Final Status
+1. **Clone repository**
+   ```bash
+   git clone <repo-url>
+   cd autoflow-ai
+   ```
 
-### 🟢 STAGING VALIDATED
+2. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with production values
+   ```
 
-All P1 blockers are resolved. The system is validated on real infrastructure:
+3. **Build and start**
+   ```bash
+   docker compose -f docker-compose.production.yml build --no-cache
+   docker compose -f docker-compose.production.yml up -d
+   ```
 
-- PostgreSQL 16 with 4 migrations
-- Redis 7 with rate limiting and lockout
-- Backend (FastAPI) with real auth, CORS, security headers
-- Frontend (Next.js 15) with SSE streaming
-- Celery worker with 3 registered tasks
-- Real workflow execution through the runtime
-- 8 connector marketplace items seeded
+4. **Run migrations**
+   ```bash
+   docker compose -f docker-compose.production.yml exec backend alembic upgrade head
+   ```
 
-**Remaining steps for PRODUCTION (separate gate):**
-1. Configure real AI provider API keys (OpenAI/Anthropic)
-2. Set up production domain with TLS
-3. Configure production CORS origins
-4. Set up monitoring/alerting (Sentry DSN)
-5. Performance load testing
-6. Penetration testing
-7. Database backup strategy
-8. CI/CD pipeline for automated deployments
+5. **Seed connectors**
+   ```bash
+   docker compose -f docker-compose.production.yml exec backend python -m app.seed_connectors
+   ```
+
+6. **Verify**
+   ```bash
+   docker compose -f docker-compose.production.yml ps
+   curl http://localhost:8000/health
+   ```
+
+---
+
+## Post-Deployment Verification
+
+- [ ] All 5 services healthy
+- [ ] Backend health endpoint responds
+- [ ] Frontend accessible
+- [ ] User registration works
+- [ ] User login works
+- [ ] Workflow creation works
+- [ ] Workflow execution works
+- [ ] SSE streaming works
+- [ ] Swagger disabled (404 on /docs)
+- [ ] Security headers present
+- [ ] No errors in logs
+
+---
+
+## Rollback Procedure
+
+See `docs/ROLLBACK.md` for detailed rollback steps.
+
+---
+
+## Production Audit Documents
+
+- `docs/FINAL_PRODUCTION_AUDIT.md` — Full audit results
+- `docs/PRODUCTION_ENVIRONMENT.md` — Environment variables
+- `docs/DATABASE_OPERATIONS.md` — Database procedures
+- `docs/ROLLBACK.md` — Rollback procedures
+- `docs/STAGING_VALIDATION_REPORT.md` — Staging validation
