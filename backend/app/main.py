@@ -19,7 +19,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     await close_db()
     await close_cache()
 
-app = FastAPI(title=settings.app_name, version=settings.app_version, docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json", lifespan=lifespan)
+# In production, disable public API documentation to avoid information leakage.
+# Development / staging keep docs for debugging.
+_is_prod = settings.environment == "production"
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
+    lifespan=lifespan,
+)
 register_middleware(app)
 
 @app.get("/health")

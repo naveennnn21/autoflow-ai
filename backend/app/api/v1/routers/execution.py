@@ -76,11 +76,62 @@ async def create_execution(
     current_user: CurrentUser = Depends(get_current_user),
     org_id: Any = Depends(get_current_organization),
 ):
-    """Create a new Execution."""
+    """Create a new execution record and dispatch it to Celery for background processing.
+
+    Returns immediately with status ``pending``.  The Celery worker picks
+    up the task, runs the workflow runtime, and updates the execution
+    record to ``completed`` / ``failed`` in the database.
+    """
     svc = ExecutionService(ExecutionRepository(db))
-    return await svc.create(data, actor_id=current_user.id
-, organization_id=org_id
-)
+    from sqlalchemy import select
+    from app.models.workflow import Workflow
+    from uuid import UUID as _UUID
+
+    # Validate workflow exists and belongs to the organization
+    stmt = select(Workflow).where(
+        Workflow.id == _UUID(str(data.workflow_id)),
+        Workflow.organization_id == _UUID(str(org_id)),
+    )
+    result = await db.execute(stmt)
+    workflow = result.scalar_one_or_none()
+    if not workflow:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    # Create execution record with pending status
+    from app.models.enums import ExecutionStatus
+    exec_data = {
+        "workflow_id": data.workflow_id,
+        "organization_id": org_id,
+        "triggered_by": current_user.id,
+        "trigger_type": data.trigger_type or "manual",
+        "input_data": data.input_data or {},
+        "status": ExecutionStatus.PENDING,
+    }
+    execution = await svc.create(
+        ExecutionCreate.model_validate(exec_data),
+        actor_id=current_user.id,
+        organization_id=org_id,
+    )
+
+    # Dispatch to Celery for background execution
+    try:
+        from app.tasks import execute_workflow_task
+        workflow_def = workflow.config or {}
+        execute_workflow_task.delay(
+            execution_id=str(execution.id),
+            workflow_id=str(workflow.id),
+            workflow_definition=workflow_def,
+            inputs=data.input_data or {},
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to dispatch to Celery – execution %s will remain pending",
+            execution.id,
+        )
+
+    return execution
 
 @router.get("/count",
     summary="Count executions", operation_id="count_executions")

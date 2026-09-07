@@ -8,6 +8,9 @@ from app.models.execution import ExecutionStatus
 class ExecutionCreate(BaseModel):
     workflow_id: Union[str, UUID]
     organization_id: Union[str, UUID]
+    triggered_by: Optional[Union[str, UUID]] = None
+    trigger_type: Optional[str] = "manual"
+    input_data: Optional[dict] = None
 
 
 class ExecutionUpdate(BaseModel):

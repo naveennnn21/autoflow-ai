@@ -7,6 +7,7 @@ from app.api.v1.routers.audit_log import router as audit_log_router
 from app.api.v1.routers.user import router as user_router
 from app.api.v1.routers.workflow_node import router as workflow_node_router
 from app.api.v1.routers.execution import router as execution_router
+from app.api.v1.routers.execution_stream import router as execution_stream_router
 from app.api.v1.routers.workflow import router as workflow_router
 from app.api.v1.routers.project import router as project_router
 from app.api.v1.routers.template import router as template_router
@@ -35,6 +36,7 @@ api_v1_router.include_router(audit_log_router)
 api_v1_router.include_router(user_router)
 api_v1_router.include_router(workflow_node_router)
 api_v1_router.include_router(execution_router)
+api_v1_router.include_router(execution_stream_router)
 api_v1_router.include_router(workflow_router)
 api_v1_router.include_router(project_router)
 api_v1_router.include_router(template_router)
