@@ -8,6 +8,9 @@ from app.models.workflow import WorkflowStatus
 class WorkflowCreate(BaseModel):
     organization_id: Union[str, UUID]
     name: str
+    description: Optional[str] = None
+    status: Optional[WorkflowStatus] = None
+    config: Optional[dict] = None
 
 
 class WorkflowUpdate(BaseModel):

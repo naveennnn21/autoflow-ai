@@ -4,12 +4,13 @@ from fastapi import FastAPI, Request
 from app.middleware.manager import register_middleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
-from app.core.database import close_db, init_db
+from app.core.database import close_db
 from app.core.cache import close_cache, init_cache
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:
-    await init_db()
+    # NOTE: Schema is managed by Alembic migrations, not create_all.
+    # Run 'alembic upgrade head' before starting the server.
     await init_cache()
     if settings.sentry_dsn:
         import sentry_sdk
