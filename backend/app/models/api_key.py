@@ -25,5 +25,5 @@ class APIKey(Base):
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at = mapped_column(DateTime(timezone=True))
-    organization = relationship("Organization")
-    user = relationship("User")
+    organization = relationship("Organization", back_populates="api_keys")
+    user = relationship("User", back_populates="api_keys")

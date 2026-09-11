@@ -29,6 +29,7 @@ from app.middleware import (
     cors,
     compression,
 )
+from app.middleware import csrf
 
 
 # (order, name, module, options) - derived from metadata/middleware/*.yaml
@@ -41,6 +42,11 @@ MIDDLEWARE_STACK = [
     (60, "logging", logging, {'log_headers': False}),
     (70, "metrics", metrics, {'snapshot_enabled': True}),
     (80, "rate_limit", rate_limit, {'requests_per_minute': 120, 'exempt_paths': ['/health', '/docs', '/redoc', '/openapi.json']}),
+    (85, "csrf", csrf, {
+        'secure': settings.environment == 'production',
+        'same_site': 'lax',
+        'enabled': settings.environment == 'production',
+    }),
     (90, "authentication", authentication, {'auto_error': False, 'algorithm': 'HS256'}),
     (100, "authorization", authorization, {'default_deny': False, 'public_paths': ['/health', '/docs', '/redoc', '/openapi.json']}),
     (110, "tenant", tenant, {'header_name': 'X-Organization-Id'}),

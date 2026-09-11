@@ -18,7 +18,7 @@ class User(Base):
     password_hash = mapped_column(String(255))
     full_name = mapped_column(String(255))
     avatar_url = mapped_column(String(255))
-    status = mapped_column(Enum(UserStatus))
+    status = mapped_column(Enum(UserStatus, values_callable=lambda x: [e.value for e in x]))
     is_superuser = mapped_column(Boolean)
     is_verified = mapped_column(Boolean)
     last_login_at = mapped_column(DateTime(timezone=True))

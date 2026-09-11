@@ -18,5 +18,5 @@ class Team(Base):
     organization_id = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    organization = relationship("Organization")
-    members = relationship("TeamMember", cascade="all, delete-orphan")
+    organization = relationship("Organization", back_populates="teams")
+    members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")

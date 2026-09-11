@@ -108,7 +108,11 @@ class Client:
                        or data.get("org_id")
                        or uuid.uuid4())
         user_id = str((data.get("user") or {}).get("id") or uuid.uuid4())
-        self.headers = {"X-User-Id": user_id, "X-Org-Id": self.org}
+        token = data.get("access_token", "")
+        self.headers = {
+            "Authorization": f"Bearer {token}",
+            "X-Org-Id": self.org,
+        }
         self._client = AsyncClient(transport=ASGITransport(app=app),
                                    base_url="http://test")
         return self

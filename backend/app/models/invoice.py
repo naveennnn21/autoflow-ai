@@ -24,5 +24,5 @@ class Invoice(Base):
     organization_id = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    organization = relationship("Organization")
-    subscription = relationship("Subscription")
+    organization = relationship("Organization", back_populates="invoices")
+    subscription = relationship("Subscription", back_populates="invoices")

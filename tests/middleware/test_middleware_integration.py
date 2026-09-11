@@ -79,6 +79,7 @@ class TestMiddlewareStack:
             "logging",
             "metrics",
             "rate_limit",
+            "csrf",
             "authentication",
             "authorization",
             "tenant",

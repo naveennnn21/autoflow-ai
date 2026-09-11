@@ -2,10 +2,8 @@
 
 from typing import Any, Optional
 from uuid import UUID
-from fastapi import Depends, Header, HTTPException, Query, Request, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import get_db
 from app.core.config import settings
 
 security_scheme = HTTPBearer(auto_error=False)
@@ -61,15 +59,25 @@ async def require_role(required: str):
 
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
-    x_user_id: Optional[str] = Header(None),
-    x_org_id: Optional[str] = Header(None),
+    x_user_id: Optional[str] = None,
+    x_org_id: Optional[str] = None,
 ) -> CurrentUser:
-    """Extract current user from JWT or dev header (debug only)."""
-    if x_user_id and settings.debug:
+    """Extract current user from JWT.
+    
+    SECURITY: Dev header bypass is ONLY allowed when both conditions are true:
+    1. settings.debug is True
+    2. settings.environment is 'development'
+    
+    In production (environment='production'), dev headers are NEVER accepted.
+    This allows tests and local development while protecting production.
+    """
+    # Dev header bypass - only in development mode
+    if x_user_id and settings.debug and settings.environment == 'development':
         return CurrentUser(
             user_id=UUID(x_user_id) if x_user_id else None,
             org_id=UUID(x_org_id) if x_org_id else None,
         )
+    
     if credentials:
         try:
             from jose import jwt
@@ -96,12 +104,16 @@ async def get_current_user(
 
 async def get_current_organization(
     current_user: CurrentUser = Depends(get_current_user),
-    x_org_id: Optional[str] = Header(None),
+    x_org_id: Optional[str] = None,
 ) -> Optional[UUID]:
-    """Get current organization ID from user context or header."""
+    """Get current organization ID from user context.
+    
+    SECURITY: Header bypass only allowed in development mode.
+    """
     if current_user.organization_id:
         return current_user.organization_id
-    if x_org_id and settings.debug:
+    # Dev header fallback - only in development mode
+    if x_org_id and settings.debug and settings.environment == 'development':
         try:
             return UUID(x_org_id)
         except ValueError:

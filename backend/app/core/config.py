@@ -1,11 +1,31 @@
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
     environment: str = "development"
     debug: bool = True
+    
+    @model_validator(mode='after')
+    def validate_production_settings(self) -> 'Settings':
+        """Validate settings for production deployment."""
+        if self.environment == 'production':
+            # SECURITY: Never allow default secret key in production
+            default_keys = [
+                'dev-secret-key-change-in-production-abc123xyz',
+                'dev-secret-key-change-in-production',
+                'change-me-in-production',
+            ]
+            if self.secret_key in default_keys:
+                raise ValueError(
+                    'SECRET_KEY must be changed from the default value in production. '
+                    'Generate a secure key with: python -c "import secrets; print(secrets.token_urlsafe(64))"'
+                )
+            # Disable debug mode in production
+            self.debug = False
+        return self
     log_level: str = "DEBUG"
     app_name: str = "AutoFlow AI"
     app_version: str = "0.1.0"

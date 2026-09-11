@@ -17,5 +17,5 @@ class TeamMember(Base):
     team_id = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id", ondelete="CASCADE"), index=True)
     user_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     role = mapped_column(String(255))
-    team = relationship("Team")
+    team = relationship("Team", back_populates="members")
     user = relationship("User")

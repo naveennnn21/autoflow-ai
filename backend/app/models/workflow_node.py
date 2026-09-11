@@ -16,7 +16,7 @@ class WorkflowNode(Base):
 
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workflow_id = mapped_column(UUID(as_uuid=True), ForeignKey("workflows.id", ondelete="CASCADE"), index=True)
-    type = mapped_column(Enum(WorkflowNodeType), nullable=False, default=WorkflowNodeType.TRIGGER)
+    type = mapped_column(Enum(WorkflowNodeType, values_callable=lambda x: [e.value for e in x]), nullable=False, default=WorkflowNodeType.TRIGGER)
     label = mapped_column(String(255), nullable=False)
     position = mapped_column(Integer)
     config = mapped_column(JSON)
@@ -28,4 +28,4 @@ class WorkflowNode(Base):
     is_active = mapped_column(Boolean)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    workflow = relationship("Workflow")
+    workflow = relationship("Workflow", back_populates="nodes")

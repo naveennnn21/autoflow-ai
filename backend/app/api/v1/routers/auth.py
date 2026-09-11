@@ -11,6 +11,8 @@ security utilities (bcrypt password hashing + HS256 JWT tokens).
   endpoint always answers with a generic message to avoid user
   enumeration.
 - oauth returns 501 until provider client credentials are configured.
+- Rate limiting: 5 failed login attempts per email per 15 minutes,
+  3 password reset requests per email per hour.
 """
 
 import re
@@ -42,6 +44,17 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 _EMAIL_MAX = 255
 _PASSWORD_MIN = 8
 _PASSWORD_MAX = 128
+
+
+# --- Rate Limiting & Account Lockout -------------------------------------------------
+# SECURITY: Redis-backed rate limiter and account lockout.
+# Falls back to in-memory when Redis is unavailable (logged as warning).
+from app.core.redis_state import (
+    login_limiter as _login_limiter,
+    password_reset_limiter as _password_reset_limiter,
+    register_limiter as _register_limiter,
+    account_lockout as _account_lockout,
+)
 
 
 def _normalize_email(email: str) -> str:
@@ -202,8 +215,23 @@ class PasswordResetRequest(BaseModel):
 
 @router.post("/register", status_code=201, summary="Register a new user account")
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
-    """Create a user account and return JWT tokens."""
+    """Create a user account and return JWT tokens.
+    
+    SECURITY: Rate limited to 3 registrations per email per hour.
+    """
     email = _validate_email(body.email)
+    
+    # Rate limiting: 3 registrations per hour per email
+    rate_key = f"register:{email}"
+    if not await _register_limiter.check(rate_key, max_attempts=3, window_seconds=3600):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registration attempts. Try again later.",
+            headers={"Retry-After": "3600"},
+        )
+    
+    await _register_limiter.record(rate_key, window_seconds=3600)
+    
     repo = UserRepository(db)
     existing = await repo.get_by_email(email)
     if existing is not None:
@@ -225,17 +253,58 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
 
 @router.post("/login", summary="Authenticate user and return JWT tokens")
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
-    """Verify credentials and issue access and refresh tokens."""
+    """Verify credentials and issue access and refresh tokens.
+    
+    SECURITY: 
+    - Rate limited to 5 attempts per email per 15 minutes
+    - Account locked after 5 failed attempts for 15 minutes
+    """
     email = _normalize_email(body.email)
+    
+    # Account lockout check
+    if await _account_lockout.is_locked(email):
+        remaining = await _account_lockout.lockout_remaining(email)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Account locked due to too many failed attempts. Try again in {remaining} seconds.",
+            headers={"Retry-After": str(remaining)},
+        )
+    
+    # Rate limiting: 5 attempts per 15 minutes per email
+    rate_key = f"login:{email}"
+    if not await _login_limiter.check(rate_key, max_attempts=5, window_seconds=900):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Try again in 15 minutes.",
+            headers={"Retry-After": "900"},
+        )
+    
     repo = UserRepository(db)
     user = await repo.get_by_email(email)
     if user is None or not user.password_hash or not verify_password(
         body.password, user.password_hash,
     ):
+        # Record failed attempt for both rate limiting and account lockout
+        await _login_limiter.record(rate_key, window_seconds=900)
+        await _account_lockout.record_failure(email)
+        
+        # Check if this failure triggered a lockout
+        if await _account_lockout.is_locked(email):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Account locked due to too many failed attempts. Try again in 15 minutes.",
+                headers={"Retry-After": "900"},
+            )
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+    
+    # Successful login - clear rate limit and account lockout for this email
+    await _login_limiter.clear(rate_key)
+    await _account_lockout.clear(email)
+    
     if user.status == UserStatus.SUSPENDED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -325,10 +394,21 @@ async def password_reset(body: PasswordResetRequest, db: AsyncSession = Depends(
     The token is logged at debug level for development. Production
     delivery requires an email provider; the response is deliberately
     generic so email addresses cannot be enumerated.
+    
+    SECURITY: Rate limited to 3 requests per email per hour.
     """
     import logging
 
     email = _normalize_email(body.email)
+    
+    # Rate limiting: 3 requests per hour per email
+    rate_key = f"password_reset:{email}"
+    if not await _password_reset_limiter.check(rate_key, max_attempts=3, window_seconds=3600):
+        # Still return success to prevent email enumeration
+        return {"detail": "If that email is registered, a reset link was sent"}
+    
+    await _password_reset_limiter.record(rate_key, window_seconds=3600)
+    
     repo = UserRepository(db)
     user = await repo.get_by_email(email)
     if user is not None:

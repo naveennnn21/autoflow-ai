@@ -21,5 +21,5 @@ class ExecutionLog(Base):
     duration_ms = mapped_column(Integer)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    execution = relationship("Execution")
+    execution = relationship("Execution", back_populates="logs")
     node = relationship("WorkflowNode")

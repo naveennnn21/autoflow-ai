@@ -54,11 +54,15 @@ async def _register(client: AsyncClient, tag: str) -> dict:
     return {
         "user": str(data["user"]["id"]),
         "org": str((data.get("org") or {}).get("id") or data["org_id"]),
+        "token": data.get("access_token", ""),
     }
 
 
 async def _headers(actor: dict) -> dict:
-    return {"X-User-Id": actor["user"], "X-Org-Id": actor["org"]}
+    return {
+        "Authorization": f"Bearer {actor['token']}",
+        "X-Org-Id": actor["org"],
+    }
 
 
 async def test_cross_tenant_read_update_delete_restore_all_404():
