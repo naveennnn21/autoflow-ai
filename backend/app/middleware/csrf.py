@@ -28,6 +28,7 @@ from starlette.responses import Response
 CSRF_EXEMPT_PATHS: Set[str] = {
     "/health",
     "/health/db",
+    "/readiness",
     "/docs",
     "/redoc",
     "/openapi.json",

@@ -1,7 +1,12 @@
 """AutoFlow AI - Health check middleware.
 
-Short-circuits configured health paths (default /health and /health/db)
-before heavier middleware runs, returning a lightweight JSON payload.
+Short-circuits configured health paths (default /health, /health/db and
+/readiness) before heavier middleware runs, returning a lightweight JSON
+payload.
+
+  /health    - liveness:  the process is up (no dependencies touched)
+  /health/db - readiness: PostgreSQL is reachable and answers a query
+  /readiness - readiness: alias of /health/db
 """
 from datetime import datetime, timezone
 
@@ -15,7 +20,7 @@ from app.core.config import settings
 class HealthMiddleware(BaseHTTPMiddleware):
     """Handle health check paths early in the middleware stack."""
 
-    def __init__(self, app, paths=("/health", "/health/db")):
+    def __init__(self, app, paths=("/health", "/health/db", "/readiness")):
         super().__init__(app)
         self.paths = tuple(paths) if not isinstance(paths, str) else (paths,)
 
@@ -23,7 +28,7 @@ class HealthMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path not in self.paths:
             return await call_next(request)
-        if path == "/health/db":
+        if path in ("/health/db", "/readiness"):
             return await self._db_health()
         return self._liveness()
 

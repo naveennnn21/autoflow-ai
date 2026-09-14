@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-DEFAULT_PUBLIC_PATHS = ("/health", "/docs", "/redoc", "/openapi.json")
+DEFAULT_PUBLIC_PATHS = ("/health", "/health/db", "/readiness", "/docs", "/redoc", "/openapi.json")
 
 
 class AuthorizationMiddleware(BaseHTTPMiddleware):

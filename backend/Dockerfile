@@ -16,7 +16,9 @@ COPY alembic.ini .
 
 EXPOSE 8000
 
+# Readiness, not liveness: this fails when PostgreSQL is unreachable so a
+# broken database connection can never be reported as "healthy".
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/readiness')"
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

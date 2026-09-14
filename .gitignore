@@ -40,6 +40,9 @@ dist/
 **/*.key
 **/*.cert
 
+# Backups (database dumps must never be committed)
+infra/backups/
+
 # Terraform
 *.tfstate
 *.tfstate.*
