@@ -121,7 +121,7 @@ DigitalOcean Spaces, ...). Required settings:
 | Bucket | Create one dedicated bucket, e.g. `autoflow-backups`. |
 | Prefix | `BACKUP_S3_PREFIX` (default `backups`). |
 | Credentials | Least-privilege key limited to `s3:PutObject`, `s3:GetObject`, `s3:HeadObject` (and `s3:ListBucket`) on that prefix only. |
-| TLS | Use `https://` endpoints in production. |
+| TLS | **Enforced by code**: the S3 endpoint and webhook URL must be `https://` unless `BACKUP_ALLOW_INSECURE_ENDPOINTS=true` (local testing only). |
 | Region | `BACKUP_S3_REGION` / `AWS_REGION`. |
 | Custom endpoint | `BACKUP_S3_ENDPOINT_URL` (leave empty for AWS). |
 | Path style | `BACKUP_S3_FORCE_PATH_STYLE=auto` (path style is used automatically with a custom endpoint; required by MinIO). |
@@ -134,6 +134,12 @@ Object lifecycle/versioning on the bucket (e.g. transition to cold storage after
 `docker-compose.backup-test.yml` starts a local MinIO + bucket initialiser:
 
 ```bash
+# Test-only credentials must be supplied (no defaults are hardcoded).
+export BACKUP_S3_TEST_ACCESS_KEY=<test-user>
+export BACKUP_S3_TEST_SECRET_KEY=<test-password>
+# The harness (docker-compose.backup-test.yml) sets
+# BACKUP_ALLOW_INSECURE_ENDPOINTS=true for the backup service because the local
+# endpoint is http://. This file is test-only.
 docker compose -f docker-compose.production.yml \
                -f docker-compose.backup-test.yml up -d minio minio-init
 ```
@@ -159,6 +165,7 @@ holds placeholders only.
 | `BACKUP_S3_REGION` | no | — | Region |
 | `BACKUP_S3_FORCE_PATH_STYLE` | no | `auto` | `auto`/`true`/`false` |
 | `BACKUP_REMOTE_ALLOW_OVERWRITE` | no | `false` | Allow replacing existing objects |
+| `BACKUP_ALLOW_INSECURE_ENDPOINTS` | no | `false` | Permit `http://` endpoints (local testing only; enforced by code) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | when remote | — | Credentials |
 | `AWS_REGION` | no | — | Fallback region |
 | `BACKUP_ALERT_ENABLED` | no | `false` | Enable failure alerts |
@@ -399,8 +406,9 @@ See `docs/BACKUP_STEP2_VALIDATION_REPORT.md` for the recorded results.
 - Remote keys are built from fixed prefixes + a generated timestamp — no
   user-supplied path segments, so no traversal or injection is possible.
 - Env values are quoted in shell; no `eval`, no unquoted expansions.
-- Use least-privilege bucket credentials and `https://` endpoints in
-  production.
+- Use least-privilege bucket credentials. The tooling **rejects** a non-`https`
+  S3 endpoint or webhook URL unless `BACKUP_ALLOW_INSECURE_ENDPOINTS=true`
+  (documented as local-testing-only), so credentials cannot be sent in clear.
 - The backup container has **no** Docker socket and **no** write access to
   PostgreSQL beyond `pg_dump` reads; it can never modify the database.
 - Step 1 controls (no `--create`, object-level dumps, restore interlocks) are

@@ -184,7 +184,9 @@ class _CaptureHandler(BaseHTTPRequestHandler):
 
 
 @pytest.fixture
-def alert_server():
+def alert_server(monkeypatch):
+    # The local collector speaks http://, so opt in explicitly for these tests.
+    monkeypatch.setenv("BACKUP_ALLOW_INSECURE_ENDPOINTS", "true")
     _CaptureHandler.received = []
     _CaptureHandler.status_code = 200
     server = ThreadingHTTPServer(("127.0.0.1", 0), _CaptureHandler)
@@ -227,4 +229,46 @@ def test_send_alert_http_error_returns_nonzero(alert_server):
 def test_send_alert_missing_url_returns_nonzero(monkeypatch):
     monkeypatch.delenv("BACKUP_ALERT_WEBHOOK_URL", raising=False)
     rc = backup_ops.main(["send-alert", "--status", "FAILED", "--error", "x"])
+    assert rc == 1
+
+
+# ---------------------------------------------------------------------------
+# HTTPS enforcement (security hardening)
+# ---------------------------------------------------------------------------
+def test_check_secure_url_rules(monkeypatch):
+    monkeypatch.delenv("BACKUP_ALLOW_INSECURE_ENDPOINTS", raising=False)
+    assert backup_ops.check_secure_url("", "L") is None
+    assert backup_ops.check_secure_url("https://example.com", "L") is None
+    assert backup_ops.check_secure_url("http://example.com", "L") is not None
+    assert backup_ops.check_secure_url("ftp://example.com", "L") is not None
+    monkeypatch.setenv("BACKUP_ALLOW_INSECURE_ENDPOINTS", "true")
+    assert backup_ops.check_secure_url("http://example.com", "L") is None
+
+
+def test_s3_endpoint_requires_https(tmp_path, monkeypatch):
+    monkeypatch.delenv("BACKUP_ALLOW_INSECURE_ENDPOINTS", raising=False)
+    path = _write(tmp_path / "backup.sql", "data")
+    rc = backup_ops.main([
+        "s3-upload", "--file", str(path), "--bucket", "b",
+        "--key", "k", "--endpoint", "http://example.com",
+    ])
+    assert rc == 1
+
+
+def test_s3_endpoint_http_allowed_with_optin(tmp_path, fake_s3, monkeypatch):
+    monkeypatch.setenv("BACKUP_ALLOW_INSECURE_ENDPOINTS", "true")
+    path = _write(tmp_path / "backup.sql", "data")
+    rc = backup_ops.main([
+        "s3-upload", "--file", str(path), "--bucket", "b",
+        "--key", "k", "--endpoint", "http://example.com",
+    ])
+    assert rc == 0
+
+
+def test_send_alert_rejects_http_without_optin(monkeypatch):
+    monkeypatch.delenv("BACKUP_ALLOW_INSECURE_ENDPOINTS", raising=False)
+    rc = backup_ops.main([
+        "send-alert", "--status", "FAILED", "--error", "x",
+        "--url", "http://example.com/hook",
+    ])
     assert rc == 1

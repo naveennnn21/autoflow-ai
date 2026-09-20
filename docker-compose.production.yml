@@ -197,6 +197,9 @@ services:
       BACKUP_S3_REGION: ${BACKUP_S3_REGION:-}
       BACKUP_S3_FORCE_PATH_STYLE: ${BACKUP_S3_FORCE_PATH_STYLE:-auto}
       BACKUP_REMOTE_ALLOW_OVERWRITE: ${BACKUP_REMOTE_ALLOW_OVERWRITE:-false}
+      # Require https:// for the S3 endpoint and alert webhook. The escape
+      # hatch is for local testing only and must remain false in production.
+      BACKUP_ALLOW_INSECURE_ENDPOINTS: ${BACKUP_ALLOW_INSECURE_ENDPOINTS:-false}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_REGION: ${AWS_REGION:-}

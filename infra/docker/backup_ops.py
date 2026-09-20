@@ -40,6 +40,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Optional
+from urllib.parse import urlsplit
 
 # ---------------------------------------------------------------------------
 # Redaction
@@ -100,6 +101,33 @@ def _truthy(value: Optional[str]) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _insecure_endpoints_allowed() -> bool:
+    """Test/dev escape hatch; never enable in production."""
+    return _truthy(os.environ.get("BACKUP_ALLOW_INSECURE_ENDPOINTS", "false"))
+
+
+def check_secure_url(url: Optional[str], label: str) -> Optional[str]:
+    """Return an error message if *url* is not HTTPS, else ``None``.
+
+    Off-host storage and alerting carry credentials in transit, so both must
+    use TLS. ``BACKUP_ALLOW_INSECURE_ENDPOINTS=true`` permits plain ``http://``
+    for local-only testing and must not be set in production.
+    """
+    if not url:
+        return None
+    scheme = urlsplit(url).scheme.lower()
+    if scheme == "https":
+        return None
+    if scheme == "http" and _insecure_endpoints_allowed():
+        return None
+    if scheme == "http":
+        return (
+            f"{label} must use an https:// URL "
+            "(set BACKUP_ALLOW_INSECURE_ENDPOINTS=true only for local testing)"
+        )
+    return f"{label} must be a valid https:// URL"
+
+
 def _build_s3_client(
     endpoint: Optional[str],
     region: Optional[str],
@@ -152,6 +180,11 @@ def cmd_s3_upload(args: argparse.Namespace) -> int:
     size = os.path.getsize(path)
     if size <= 0:
         print("error: refusing to upload a zero-byte file", file=sys.stderr)
+        return 1
+
+    endpoint_error = check_secure_url(args.endpoint, "BACKUP_S3_ENDPOINT_URL")
+    if endpoint_error:
+        print(f"error: {endpoint_error}", file=sys.stderr)
         return 1
 
     sha = args.sha256 or sha256_file(path)
@@ -220,6 +253,10 @@ def cmd_s3_upload(args: argparse.Namespace) -> int:
 
 
 def cmd_s3_verify(args: argparse.Namespace) -> int:
+    endpoint_error = check_secure_url(args.endpoint, "BACKUP_S3_ENDPOINT_URL")
+    if endpoint_error:
+        print(f"error: {endpoint_error}", file=sys.stderr)
+        return 1
     s3 = _build_s3_client(args.endpoint, args.region, args.path_style)
     head = _head_object(s3, args.bucket, args.key)
     if head is None:
@@ -319,6 +356,10 @@ def build_alert_payload(args: argparse.Namespace) -> Dict[str, Any]:
 def cmd_send_alert(args: argparse.Namespace) -> int:
     if not args.url:
         print("error: no alert webhook configured", file=sys.stderr)
+        return 1
+    url_error = check_secure_url(args.url, "BACKUP_ALERT_WEBHOOK_URL")
+    if url_error:
+        print(f"error: {url_error}", file=sys.stderr)
         return 1
     body = json.dumps(build_alert_payload(args)).encode("utf-8")
     request = urllib.request.Request(
