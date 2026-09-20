@@ -4,9 +4,10 @@ Operational guide for PostgreSQL backup, restore and recovery.
 
 - **Engine:** PostgreSQL 16-alpine (Docker Compose, service `postgres`)
 - **Migrations:** Alembic (currently `0004_marketplace_author`)
-- **Backup:** `infra/docker/backup.sh`
+- **Backup:** `infra/docker/backup.sh` (scheduled by the `backup` Compose service)
 - **Restore verification:** `infra/docker/verify_restore.sh`
 - **Disaster recovery:** `docs/ROLLBACK.md`
+- **Backup operations (Step 2: off-host, scheduler, retry, alerting):** `docs/BACKUP_OPERATIONS.md`
 
 ---
 
@@ -22,9 +23,9 @@ Operational guide for PostgreSQL backup, restore and recovery.
 | Retention | 30 days daily / 12 weeks weekly / 12 months monthly | IMPLEMENTED |
 | Failure detection | non-zero exit + `.backup_failed.log` + `.partial_*.err` | IMPLEMENTED |
 | Automated restore verification | `infra/docker/verify_restore.sh` | IMPLEMENTED |
-| **Off-host copy** | **none — backups live on the same host as the database** | **NOT IMPLEMENTED** |
-| **Automated schedule (cron/systemd)** | **none installed anywhere** | **NOT IMPLEMENTED** |
-| **Alerting on backup failure** | **none** | **NOT IMPLEMENTED** |
+| Off-host copy | S3-compatible upload + remote verification (`backup_ops.py`) | IMPLEMENTED + VERIFIED |
+| Automated schedule | `backup` Compose service running `backup_scheduler.sh` | IMPLEMENTED + VERIFIED |
+| Alerting on backup failure | redacted webhook, sent after retries are exhausted | IMPLEMENTED + VERIFIED |
 
 > **Documentation is not implementation.** Sections marked *DOCUMENTED ONLY* below
 > describe configuration you still have to install on the production host. They
@@ -210,11 +211,12 @@ df -h infra/backups                       # disk space
 ./infra/docker/backup.sh                  # retry
 ```
 
-### Alerting — NOT IMPLEMENTED
+### Alerting — IMPLEMENTED + VERIFIED
 
-Nothing currently watches `.backup_failed.log` or the scheduler's exit status, so a
-silently failing backup will go unnoticed. Until alerting exists, the only
-guarantee is a scheduled `verify_restore.sh` run plus manual review.
+After the retry policy is exhausted, `backup.sh` POSTs a redacted JSON alert to
+`BACKUP_ALERT_WEBHOOK_URL` (one alert per run, no alert storms). The webhook URL
+and all credential-like values are never included. See
+`docs/BACKUP_OPERATIONS.md` §10–§11.
 
 ---
 
@@ -235,11 +237,19 @@ and independent of which weekday the scheduler happens to run on.
 
 ---
 
-## 8. Scheduling — DOCUMENTED ONLY (not installed)
+## 8. Scheduling
 
-No scheduler is configured on any host today. The host used for the most recent
-validation has neither `crontab` nor `systemctl`, and the repository contains no
-timer/service unit. **Nothing runs `backup.sh` automatically right now.**
+### Production scheduler — IMPLEMENTED + VERIFIED
+
+The `backup` service in `docker-compose.production.yml` runs
+`infra/docker/backup_scheduler.sh`, which invokes `backup.sh` on a configurable
+interval (default daily) and writes a heartbeat. No host cron/systemd is
+required. See `docs/BACKUP_OPERATIONS.md` §6–§7.
+
+### Host cron/systemd — DOCUMENTED ONLY (alternative, not used)
+
+The following are optional host-level alternatives for deployments that do not
+run the `backup` service. They are **not** active in the Compose deployment.
 
 ### Option 1 — cron (Linux host)
 
@@ -353,9 +363,9 @@ docker compose -f docker-compose.production.yml exec -T backend \
 
 | # | Issue | Severity |
 |---|---|---|
-| 1 | Backups are same-host only — no off-host copy, no disaster recovery | High |
-| 2 | No scheduler installed; backups only run when invoked manually | High |
-| 3 | No alerting when a backup fails | Medium |
+| 1 | ~~Backups are same-host only~~ — off-host S3-compatible copies implemented (bucket lifecycle policy still to configure) | Resolved / Low |
+| 2 | ~~No scheduler installed~~ — `backup` service schedule implemented | Resolved |
+| 3 | ~~No alerting when a backup fails~~ — webhook alerting implemented | Resolved |
 | 4 | No point-in-time recovery / WAL archiving | Medium |
 | 5 | Retention is enforced only on successful runs (a persistently failing backup stops pruning) | Low |
 
@@ -373,8 +383,8 @@ docker compose -f docker-compose.production.yml exec -T backend \
 | Safe TEST RESTORE + PRODUCTION RESTORE runbooks | IMPLEMENTED |
 | `/readiness` DB probe wired into the Docker healthcheck | IMPLEMENTED |
 | `infra/backups/` git-ignored | IMPLEMENTED |
-| Off-host backup copy | NOT IMPLEMENTED |
-| Automated schedule | NOT IMPLEMENTED |
-| Backup failure alerting | NOT IMPLEMENTED |
+| Off-host backup copy | IMPLEMENTED + VERIFIED |
+| Automated schedule | IMPLEMENTED + VERIFIED |
+| Backup failure alerting | IMPLEMENTED + VERIFIED |
 
 See `docs/BACKUP_VALIDATION_REPORT.md` for the evidence behind each line.

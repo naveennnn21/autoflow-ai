@@ -8,7 +8,10 @@
 ## Pre-Deployment Checklist
 
 ### Infrastructure
-- [ ] PostgreSQL 16 with automated backups configured
+- [x] PostgreSQL 16 with automated backups configured (local + off-host)
+- [ ] Off-host backup destination configured (`BACKUP_REMOTE_ENABLED=true`, bucket, credentials)
+- [ ] Backup failure alert webhook configured (`BACKUP_ALERT_ENABLED=true`)
+- [x] Backup scheduler running (`backup` Compose service)
 - [ ] Redis 7 with password authentication
 - [ ] TLS certificate obtained and configured
 - [ ] Reverse proxy (nginx/traefik) deployed
@@ -31,7 +34,9 @@
 ### Database
 - [ ] Migrations applied: `alembic upgrade head`
 - [ ] Connector marketplace seeded: `python -m app.seed_connectors`
-- [ ] Backup schedule configured
+- [x] Backup scheduler configured (`BACKUP_SCHEDULE_INTERVAL_SECONDS`)
+- [x] Backup retention + retry + alerting implemented (see `docs/BACKUP_OPERATIONS.md`)
+- [ ] Verify an off-host backup + a test restore before go-live
 
 ### Monitoring
 - [ ] Sentry error tracking configured
@@ -105,5 +110,7 @@ See `docs/ROLLBACK.md` for detailed rollback steps.
 - `docs/FINAL_PRODUCTION_AUDIT.md` — Full audit results
 - `docs/PRODUCTION_ENVIRONMENT.md` — Environment variables
 - `docs/DATABASE_OPERATIONS.md` — Database procedures
+- `docs/BACKUP_OPERATIONS.md` — Backup/scheduler/off-host/alerting operations
+- `docs/BACKUP_STEP2_VALIDATION_REPORT.md` — Step 2 validation evidence
 - `docs/ROLLBACK.md` — Rollback procedures
 - `docs/STAGING_VALIDATION_REPORT.md` — Staging validation

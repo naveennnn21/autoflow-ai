@@ -26,11 +26,13 @@ AutoFlow AI has been validated on real Docker production infrastructure. All P1 
 - .gitignore covers .env files
 - Git history clean of secrets
 
-### 3. Database Backups ⚠️ P1
-- **FINDING:** No automated backup system
-- **RISK:** Data loss on infrastructure failure
-- **FIX:** Configure pg_dump cron or cloud backup service
-- **FILES:** DATABASE_OPERATIONS.md created
+### 3. Database Backups ✅
+- Automated, scheduled, off-host backups implemented and validated
+- Object-level dumps (no `--create`), integrity-checked, atomically published
+- S3-compatible off-host upload with size + sha256 remote verification
+- Bounded retries and redacted webhook alerting on final failure
+- Tiered retention (30d daily / 12w weekly / 12m monthly)
+- **FILES:** `docs/BACKUP_OPERATIONS.md`, `docs/BACKUP_STEP2_VALIDATION_REPORT.md`
 
 ### 4. Redis ✅
 - Password authentication enabled
@@ -162,7 +164,7 @@ AutoFlow AI has been validated on real Docker production infrastructure. All P1 
 
 | # | Issue | Risk | Fix |
 |---|-------|------|-----|
-| 1 | No automated database backups | Data loss | Configure pg_dump cron or cloud backup |
+| 1 | ~~No automated database backups~~ — resolved: scheduled off-host backups implemented | Data loss | Configure `BACKUP_REMOTE_ENABLED` + bucket credentials in `.env` |
 | 2 | No TLS termination | Unencrypted traffic | Deploy behind reverse proxy with TLS |
 
 ### P2 (Should fix soon)

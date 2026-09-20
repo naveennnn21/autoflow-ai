@@ -1,0 +1,5 @@
+# AutoFlow AI - backup service runtime dependencies
+# Used only by the dedicated `backup` container (infra/docker/Dockerfile.backup).
+# Kept separate from backend/requirements.txt so the application image does not
+# carry S3 client code it does not use.
+boto3>=1.34,<2

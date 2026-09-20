@@ -1,0 +1,57 @@
+# AutoFlow AI - OPTIONAL, NON-PRODUCTION test harness for off-host backups.
+#
+# Spins up a local S3-compatible server (MinIO) plus a one-shot bucket
+# initialiser so the off-host backup path can be validated end to end without
+# touching real cloud storage.
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml \
+#                  -f docker-compose.backup-test.yml up -d minio minio-init
+#
+# Then set the following in the local (gitignored) .env:
+#   BACKUP_REMOTE_ENABLED=true
+#   BACKUP_S3_BUCKET=autoflow-backups
+#   BACKUP_S3_ENDPOINT_URL=http://minio:9000
+#   BACKUP_S3_FORCE_PATH_STYLE=true
+#   AWS_ACCESS_KEY_ID=<minio user>
+#   AWS_SECRET_ACCESS_KEY=<minio password>
+#
+# This file is NOT part of the production deployment.
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${BACKUP_S3_TEST_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${BACKUP_S3_TEST_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - backup_minio_data:/data
+    networks:
+      - autoflow
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${BACKUP_S3_TEST_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${BACKUP_S3_TEST_SECRET_KEY:-minioadmin}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-autoflow-backups}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        i=0
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+          i=$$((i+1)); [ "$$i" -ge 60 ] && echo "minio not ready" && exit 1; sleep 2
+        done
+        mc mb --ignore-existing "local/$$BACKUP_S3_BUCKET" >/dev/null
+        echo "minio bucket ready: $$BACKUP_S3_BUCKET"
+    networks:
+      - autoflow
+
+volumes:
+  backup_minio_data:
