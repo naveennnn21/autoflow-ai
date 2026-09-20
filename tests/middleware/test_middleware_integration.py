@@ -45,6 +45,7 @@ def build_app(overrides=None) -> FastAPI:
             "correlation_id": getattr(request.state, "correlation_id", None),
             "organization_id": getattr(request.state, "organization_id", None),
             "user": getattr(request.state, "user", None),
+            "client_ip": getattr(request.state, "client_ip", None),
         }
 
     @app.get("/protected")
@@ -250,3 +251,57 @@ class TestMiddlewareStack:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/", headers={"Accept-Encoding": "gzip"})
             assert resp.headers.get("content-encoding") == "gzip"
+
+    # --- Trusted proxy / client address ---
+
+    @pytest.mark.asyncio
+    async def test_client_ip_defaults_to_the_direct_peer(self):
+        """With no trusted proxies configured, X-Forwarded-For is ignored."""
+        app = build_app()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/state", headers={"X-Forwarded-For": "203.0.113.9"})
+        assert resp.json()["client_ip"] == "127.0.0.1"
+
+    @pytest.mark.asyncio
+    async def test_client_ip_honours_a_trusted_proxy(self):
+        """A trusted peer may supply the real client via X-Forwarded-For."""
+        app = build_app(overrides={"rate_limit": {"trusted_proxy_cidrs": "127.0.0.1/32"}})
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/state", headers={"X-Forwarded-For": "203.0.113.9"})
+        assert resp.json()["client_ip"] == "203.0.113.9"
+
+    @pytest.mark.asyncio
+    async def test_client_ip_ignores_a_forged_header_from_untrusted_peer(self):
+        """The peer is not a trusted proxy, so the header cannot be believed."""
+        app = build_app(overrides={"rate_limit": {"trusted_proxy_cidrs": "10.0.0.0/8"}})
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/state", headers={"X-Forwarded-For": "203.0.113.9"})
+        assert resp.json()["client_ip"] == "127.0.0.1"
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_separates_clients_behind_a_trusted_proxy(self):
+        """Distinct forwarded clients get distinct buckets behind the edge."""
+        app = build_app(overrides={
+            "rate_limit": {"requests_per_minute": 2, "trusted_proxy_cidrs": "127.0.0.1/32"},
+        })
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            first = [
+                await client.get("/", headers={"X-Forwarded-For": "203.0.113.9"})
+                for _ in range(3)
+            ]
+            other = await client.get("/", headers={"X-Forwarded-For": "198.51.100.7"})
+        assert [r.status_code for r in first] == [200, 200, 429]
+        assert other.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_is_not_bypassable_by_a_spoofed_header(self):
+        """Rotating X-Forwarded-For from an untrusted peer must not help."""
+        app = build_app(overrides={
+            "rate_limit": {"requests_per_minute": 2, "trusted_proxy_cidrs": "10.0.0.0/8"},
+        })
+        statuses = []
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            for index in range(3):
+                resp = await client.get("/", headers={"X-Forwarded-For": f"203.0.113.{index + 1}"})
+                statuses.append(resp.status_code)
+        assert statuses == [200, 200, 429]

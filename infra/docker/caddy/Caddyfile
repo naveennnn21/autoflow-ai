@@ -1,0 +1,29 @@
+# AutoFlow AI - production edge (TLS termination + reverse proxy).
+#
+# This is the ONLY service that publishes host ports in
+# docker-compose.production.yml. PostgreSQL, Redis, the backend and the
+# frontend are reachable on the private Docker networks only.
+#
+# Certificate handling is driven by SITE_ADDRESS:
+#   * a public hostname (e.g. app.example.com) -> automatic HTTPS via ACME
+#     (Let's Encrypt / ZeroSSL), including the http->https redirect.
+#   * "localhost" (the default)                -> Caddy's internal CA, which
+#     is what local pre-production validation uses.
+#
+# To receive certificate-expiry notifications, add a global option block:
+#   {
+#       email ops@example.com
+#   }
+# It is intentionally omitted by default so no address is guessed.
+#
+# See docs/EDGE_TLS_OPERATIONS.md.
+
+{
+	# The admin API is not needed at runtime and is not published.
+	admin off
+}
+
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+	import /etc/caddy/routes.caddy
+}

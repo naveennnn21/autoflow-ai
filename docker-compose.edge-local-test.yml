@@ -1,0 +1,25 @@
+# AutoFlow AI - OPTIONAL, NON-PRODUCTION harness for validating the edge locally.
+#
+# Layers on top of the production compose file and changes only the values
+# that differ for a local TLS run: the site is "localhost" (Caddy's internal
+# CA instead of ACME) and the browser-facing URLs are https://localhost.
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml \
+#                  -f docker-compose.edge-local-test.yml up -d
+#
+# This file is NOT part of the production deployment.
+services:
+  caddy:
+    environment:
+      SITE_ADDRESS: localhost
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: https://localhost/api/v1
+        NEXT_PUBLIC_SITE_URL: https://localhost
+
+  backend:
+    environment:
+      CORS_ORIGINS: '["https://localhost"]'

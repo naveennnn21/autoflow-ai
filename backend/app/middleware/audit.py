@@ -49,6 +49,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 "status_code": response.status_code,
                 "request_id": getattr(request.state, "request_id", None),
                 "organization_id": getattr(request.state, "organization_id", None),
+                # Resolved by the rate-limit middleware (trusted-proxy aware),
+                # so the trail records the real client, not the edge proxy.
+                "client_ip": getattr(request.state, "client_ip", None),
             }
             request.state.audit_events.append(event)
             _events.append(event)

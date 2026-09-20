@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-AutoFlow AI has been validated on real Docker production infrastructure. All P1 staging blockers are resolved. The system executes real workflows, streams events via SSE, and maintains security controls. Two P1 items exist (database backups, HTTPS configuration) that are **operational requirements** rather than application code issues — they must be configured during deployment.
+AutoFlow AI has been validated on real Docker production infrastructure. All P1 staging blockers are resolved. The system executes real workflows, streams events via SSE, and maintains security controls. Database backup/recovery and TLS termination are now **implemented and verified**; the remaining P1 items are configuration-only — an off-host backup destination and a production hostname/DNS entry (`docs/BACKUP_PRODUCTION_VALIDATION_REPORT.md`, `docs/EDGE_TLS_OPERATIONS.md`).
 
 ---
 
@@ -110,17 +110,24 @@ AutoFlow AI has been validated on real Docker production infrastructure. All P1 
 - API URL configurable via env var
 - No localhost references in production
 
-### 15. HTTPS / Domain ⚠️ P1
-- **FINDING:** No TLS termination configured
-- **RISK:** All traffic unencrypted
-- **FIX:** Deploy behind reverse proxy (nginx/traefik) with TLS
-- **FILES:** docker-compose.production.yml needs reverse proxy service
+### 15. HTTPS / Domain ✅ (implemented; one operator step remains)
+- **RESOLVED:** Caddy edge terminates TLS — `infra/docker/caddy/` + the `caddy` Compose service
+- Automatic ACME certificates for a public `SITE_ADDRESS`; HTTP → HTTPS 308 redirect
+- HSTS asserted on every response (edge + backend security-headers middleware)
+- Verified locally over TLS with Caddy's internal CA (see `docs/EDGE_TLS_OPERATIONS.md` §8)
+- **REMAINING OPERATOR STEP:** set `SITE_ADDRESS` to the production hostname and point DNS at the host
+
+### 15.1 Network Segmentation & Proxy-Aware Identity ✅
+- Caddy is the **only** service publishing host ports (80/443)
+- PostgreSQL, Redis, backend and frontend have **no** host bindings (`{"<port>/tcp": null}`)
+- `edge` network (pinned `172.28.0.0/24`) for public-facing services; `autoflow` network is `internal: true`, so datastores have no route off the host
+- Rate limiting, audit events and tenant identity resolve the real client through `backend/app/core/client_ip.py`; `X-Forwarded-For` is believed only for peers inside `TRUSTED_PROXY_CIDRS`
+- Live evidence: forged `X-Forwarded-For` rotated 130× → 120 allowed + 10 × 429 (single bucket); a trusted peer's two forwarded IPs → two independent buckets
 
 ### 16. SSE Production Behavior ✅
-- SSE endpoint works through Docker
-- Real-time node events emitted
-- Connection close handled
-- No proxy buffering issues (verified)
+- SSE endpoint works through Docker **and through the Caddy edge** (`text/event-stream`, `X-Accel-Buffering: no`)
+- Real-time node events emitted; connection close handled
+- No proxy buffering: an A/B test against a deliberately slow upstream showed identical frame timing direct (2.104s spread) and proxied (2.106s spread) through the real `routes.caddy`
 
 ### 17. Observability ✅
 - Request IDs: X-Request-ID, X-Correlation-ID
@@ -165,7 +172,8 @@ AutoFlow AI has been validated on real Docker production infrastructure. All P1 
 | # | Issue | Risk | Fix |
 |---|-------|------|-----|
 | 1 | ~~No automated database backups~~ — resolved: scheduled off-host backups implemented | Data loss | Configure `BACKUP_REMOTE_ENABLED` + bucket credentials in `.env` |
-| 2 | No TLS termination | Unencrypted traffic | Deploy behind reverse proxy with TLS |
+| 2 | ~~No TLS termination~~ — resolved: Caddy edge terminates TLS with automatic ACME | Unencrypted traffic | Set `SITE_ADDRESS` to the production hostname and point DNS at the host |
+| 2b | Real cloud backup target + alert webhook not yet configured (Step 3) | No verified off-host recovery | Provide an S3-compatible bucket + HTTPS webhook (`docs/BACKUP_PRODUCTION_VALIDATION_REPORT.md`) |
 
 ### P2 (Should fix soon)
 
@@ -192,13 +200,13 @@ AutoFlow AI has been validated on real Docker production infrastructure. All P1 
 ### 🟢 READY FOR PRODUCTION DEPLOYMENT
 
 **Conditions:**
-1. Configure automated database backups before go-live
-2. Deploy behind TLS-terminating reverse proxy
+1. Configure the off-host backup destination (S3 bucket + credentials) before go-live
+2. Set `SITE_ADDRESS` + DNS for the Caddy edge (TLS itself is implemented and verified)
 3. Set real production secrets in environment variables
-4. Configure CORS for production domain
+4. Configure CORS for the HTTPS production origin
 
 **Evidence:**
-- 1023 backend tests pass
+- 1107 backend tests pass (1 skipped)
 - 0 TypeScript/ESLint errors
 - Real Docker E2E execution verified
 - All P1 staging blockers resolved

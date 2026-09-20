@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    # Comma-separated CIDRs of reverse proxies whose X-Forwarded-For may be
+    # trusted (e.g. "172.16.0.0/12"). Empty = trust nobody, so a spoofed
+    # forwarded header can never change the resolved client IP.
+    trusted_proxy_cidrs: str = ""
     sentry_dsn: Optional[str] = None
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None

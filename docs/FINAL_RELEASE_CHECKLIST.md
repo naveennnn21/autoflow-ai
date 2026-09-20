@@ -13,8 +13,11 @@
 - [ ] Backup failure alert webhook configured (`BACKUP_ALERT_ENABLED=true`)
 - [x] Backup scheduler running (`backup` Compose service)
 - [ ] Redis 7 with password authentication
-- [ ] TLS certificate obtained and configured
-- [ ] Reverse proxy (nginx/traefik) deployed
+- [x] Reverse proxy (Caddy edge) deployed — `caddy` Compose service, `infra/docker/caddy/`
+- [x] TLS termination implemented (automatic ACME for a public `SITE_ADDRESS`)
+- [x] Datastores/backend/frontend internal only — no host ports beyond 80/443
+- [x] Trusted-proxy client-IP resolution (`TRUSTED_PROXY_CIDRS` matches `EDGE_SUBNET`)
+- [ ] TLS certificate issued for the production hostname (`SITE_ADDRESS` set + DNS resolves)
 - [ ] DNS configured for production domain
 
 ### Secrets
@@ -28,8 +31,9 @@
 ### Application
 - [ ] ENVIRONMENT=production
 - [ ] DEBUG=false
-- [ ] CORS_ORIGINS set to production domain
-- [ ] NEXT_PUBLIC_API_URL set to production API
+- [ ] CORS_ORIGINS set to the HTTPS production origin
+- [ ] NEXT_PUBLIC_API_URL set to `https://<domain>/api/v1`
+- [ ] SITE_ADDRESS set to the production hostname (see `docs/EDGE_TLS_OPERATIONS.md`)
 
 ### Database
 - [ ] Migrations applied: `alembic upgrade head`

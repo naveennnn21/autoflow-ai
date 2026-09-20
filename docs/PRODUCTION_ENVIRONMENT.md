@@ -47,11 +47,25 @@
 | `NEXT_PUBLIC_API_URL` | ✅ | Backend API base URL |
 | `NEXT_PUBLIC_SITE_URL` | No | Public site URL |
 
+## Edge / TLS Environment Variables
+
+See `docs/EDGE_TLS_OPERATIONS.md` for the full edge and network model.
+
+| Variable | Required | Purpose | Default |
+|----------|----------|---------|---------|
+| `SITE_ADDRESS` | ✅ for public TLS | Hostname served by the Caddy edge. A real domain enables automatic ACME certificates; `localhost` uses Caddy's internal CA | `localhost` |
+| `HTTP_PORT` | No | Published HTTP port (ACME challenge + HTTPS redirect) | `80` |
+| `HTTPS_PORT` | No | Published HTTPS port (TCP + UDP/HTTP3) | `443` |
+| `EDGE_SUBNET` | No | Fixed subnet of the `edge` Docker network | `172.28.0.0/24` |
+| `TRUSTED_PROXY_CIDRS` | No | Peer ranges whose `X-Forwarded-For` is trusted. Keep equal to `EDGE_SUBNET`; empty means trust nobody | `172.28.0.0/24` |
+
 ## Security Behavior
 
 - `SECRET_KEY` validation: Production requires non-default secret key
 - `DEBUG`: Auto-disabled when `ENVIRONMENT=production`
-- `CORS_ORIGINS`: Must be explicitly set for production domain
+- `CORS_ORIGINS`: Must be explicitly set for the HTTPS production origin
 - CSRF: Enabled in production, disabled in development
-- HSTS: Enabled in production (`max-age=31536000`)
+- HSTS: Enabled in production (`max-age=31536000`) and asserted by the edge on every response
+- TLS: Terminated at the Caddy edge; **only ports 80/443 are published**. PostgreSQL, Redis, the backend and the frontend have no host ports
+- Client IP: `X-Forwarded-For` is honoured **only** when the direct peer is inside `TRUSTED_PROXY_CIDRS`; the resolved address keys rate limiting and audit events
 - Swagger: Disabled in production (404 on `/docs`, `/redoc`, `/openapi.json`)

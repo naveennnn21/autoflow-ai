@@ -1,0 +1,59 @@
+# AutoFlow AI - shared edge routes.
+#
+# Imported by the Caddyfile so local validation and production use
+# byte-identical routing. Caddy automatically sets X-Forwarded-For,
+# X-Forwarded-Proto and X-Forwarded-Host on every reverse_proxy hop; the
+# backend only believes them for peers inside TRUSTED_PROXY_CIDRS.
+
+# --- Backend: API, health and API docs --------------------------------
+
+handle /api/* {
+	reverse_proxy backend:8000 {
+		# Server-Sent Events (execution + planner streams) must not be
+		# buffered, otherwise events arrive only when the run finishes.
+		flush_interval -1
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+# The health paths are short-circuited early in the backend middleware
+# stack, so they never reach the security-headers middleware. HSTS is added
+# here instead (the backend does not send it on these paths, so this does
+# not duplicate the header on any response).
+handle /health {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy backend:8000
+}
+
+handle /health/db {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy backend:8000
+}
+
+handle /readiness {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy backend:8000
+}
+
+handle /docs* {
+	reverse_proxy backend:8000
+}
+
+handle /redoc* {
+	reverse_proxy backend:8000
+}
+
+handle /openapi.json {
+	reverse_proxy backend:8000
+}
+
+# --- Frontend: everything else ----------------------------------------
+
+handle {
+	# TLS terminates here, so HSTS is asserted for the Next.js responses as
+	# well. The backend sets its own HSTS via the security-headers middleware.
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	header X-Content-Type-Options "nosniff"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+	reverse_proxy frontend:3000
+}

@@ -41,7 +41,7 @@ MIDDLEWARE_STACK = [
     (50, "timing", timing, {'header_name': 'X-Response-Time'}),
     (60, "logging", logging, {'log_headers': False}),
     (70, "metrics", metrics, {'snapshot_enabled': True}),
-    (80, "rate_limit", rate_limit, {'requests_per_minute': 120, 'exempt_paths': ['/health', '/health/db', '/readiness', '/docs', '/redoc', '/openapi.json']}),
+    (80, "rate_limit", rate_limit, {'requests_per_minute': 120, 'exempt_paths': ['/health', '/health/db', '/readiness', '/docs', '/redoc', '/openapi.json'], 'trusted_proxy_cidrs': settings.trusted_proxy_cidrs}),
     (85, "csrf", csrf, {
         'secure': settings.environment == 'production',
         'same_site': 'lax',
