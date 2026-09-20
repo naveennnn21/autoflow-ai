@@ -130,6 +130,13 @@ The script:
 7. reads the restored database through the application's own SQLAlchemy ORM models;
 8. **always** drops `autoflow_test_restore` again, including on failure.
 
+Two defensive guards make an accidental production drop impossible:
+
+- `cleanup()` refuses to drop any database whose name equals `POSTGRES_DB`;
+- the cleanup trap is installed **only after** every safety interlock passes, so a
+  refusal (misconfigured `RESTORE_DB`, or an old-format dump) never runs
+  `DROP DATABASE` at all.
+
 Exit code `0` = every check passed. Set `KEEP_RESTORE_DB=1` to inspect the
 restored database instead of dropping it.
 

@@ -56,6 +56,14 @@ COMPOSE=(docker compose -f "$COMPOSE_FILE")
 psql_super() { "${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" "$@"; }
 
 cleanup() {
+  # Defensive guard: NEVER drop the production database, even if RESTORE_DB was
+  # misconfigured to equal POSTGRES_DB or a safety check below fails. Without
+  # this, an EXIT trap running before the RESTORE_DB/POSTGRES_DB check would
+  # execute "DROP DATABASE autoflow" on the refusal path.
+  if [ "${RESTORE_DB}" = "${POSTGRES_DB}" ]; then
+    log_error "Refusing to drop '${RESTORE_DB}' because it is the production database."
+    return 0
+  fi
   if [ "$KEEP_RESTORE_DB" = "1" ]; then
     log_info "KEEP_RESTORE_DB=1 - leaving '${RESTORE_DB}' in place."
     return 0
@@ -64,7 +72,6 @@ cleanup() {
   psql_super -d postgres -c "DROP DATABASE IF EXISTS \"${RESTORE_DB}\";" >/dev/null 2>&1 || true
   log_info "Temporary database removed."
 }
-trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
 # Select the backup
@@ -103,6 +110,11 @@ if [ "$pg_state" != "running" ]; then
   log_error "PostgreSQL service is not running in ${COMPOSE_FILE}."
   exit 1
 fi
+
+# Install the cleanup trap only AFTER every safety interlock has passed. Before
+# this point the temporary database has not been created, so no cleanup is
+# needed, and a refusal must never run a DROP DATABASE.
+trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
 # Restore into a fresh temporary database
