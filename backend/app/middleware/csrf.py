@@ -23,6 +23,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from app.core.config import settings
+
 
 # Paths exempt from CSRF protection (GET/HEAD/OPTIONS are always exempt)
 CSRF_EXEMPT_PATHS: Set[str] = {
@@ -112,9 +114,14 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             return await call_next(request)
         
-        # Check for X-User-Id header (dev mode - middleware-level auth bypass)
-        # This indicates the request is coming from a test/dev client
-        if request.headers.get("x-user-id"):
+        # Development-only convenience: the dev X-User-Id header bypasses CSRF
+        # exactly as app.api.v1.deps honours it for auth. CSRF is only enabled
+        # in production, where a client-supplied header must never disable the
+        # check, so the bypass is gated on the same debug + development
+        # conditions as the auth dependency.
+        if (request.headers.get("x-user-id")
+                and settings.debug
+                and settings.environment == "development"):
             return await call_next(request)
         
         # Validate CSRF token

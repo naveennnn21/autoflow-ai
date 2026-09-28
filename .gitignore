@@ -35,13 +35,33 @@ dist/
 .docker/
 *.log
 
-# Secrets
+# Secrets / local TLS material
 **/secrets/
 **/*.key
 **/*.cert
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# Environment files. Only *.example templates are tracked; a real .env (or
+# .env.staging / .env.local / .env.production) must never be committed.
+# The negations keep .env.example and .env.staging.example tracked.
+.env
+.env.*
+!.env.example
+!*.example
 
 # Backups (database dumps must never be committed)
 infra/backups/
+*.dump
+*.sql
+*.sql.gz
+*.partial_*.sql
+*.partial_*.err
+
+# Agent / tooling metadata
+.freebuff/
 
 # Terraform
 *.tfstate

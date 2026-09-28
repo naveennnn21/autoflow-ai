@@ -1197,8 +1197,8 @@ except ImportError:  # pragma: no cover - optional dependency
 
 
 def _default_key() -> str:
-    """Derive a stable key from the environment (or a dev fallback)."""
-    return os.environ.get("AUTOFLOW_SECRET_KEY", "autoflow-dev-secret-key")
+    """Derive a stable key: AUTOFLOW_SECRET_KEY, then SECRET_KEY, then a dev fallback."""
+    return os.environ.get("AUTOFLOW_SECRET_KEY") or os.environ.get("SECRET_KEY") or "autoflow-dev-secret-key"
 
 
 class SecretManager:

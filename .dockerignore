@@ -1,0 +1,50 @@
+# AutoFlow AI - root build context.
+#
+# Used by infra/docker/Dockerfile.backup, which builds with `context: .`.
+# Keep the context small and make sure credentials are never sent to the
+# Docker daemon. The image only COPYs specific infra/docker/* files.
+#
+# Backend and frontend have their own context-scoped .dockerignore files.
+
+# Version control / tooling
+.git
+.gitignore
+.freebuff/
+
+# Environment files & secrets (only *.example templates are intentional)
+.env
+.env.*
+!.env.example
+!*.example
+**/secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Python build artefacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend build output
+node_modules/
+**/node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Backups / database dumps
+infra/backups/
+*.dump
+*.sql
+*.sql.gz
+*.partial_*.sql
+*.partial_*.err
+
+# Logs
+*.log
