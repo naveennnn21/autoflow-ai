@@ -6,11 +6,15 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import close_db
 from app.core.cache import close_cache, init_cache
+from app.core.logging_config import configure_logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     # NOTE: Schema is managed by Alembic migrations, not create_all.
     # Run 'alembic upgrade head' before starting the server.
+    # Configure root logging first so request/error logs are not dropped by
+    # Python's default WARNING level (see app.core.logging_config).
+    configure_logging()
     await init_cache()
     if settings.sentry_dsn:
         import sentry_sdk

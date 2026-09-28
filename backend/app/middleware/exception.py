@@ -28,7 +28,7 @@ class ExceptionHandlingMiddleware(BaseHTTPMiddleware):
             raise
         except Exception as exc:  # noqa: BLE001 - global safety net
             logger.exception("Unhandled exception: %s", exc)
-            content = {"detail": "An internal server error occurred"}
+            content = {"detail": "An internal server error occurred", "request_id": getattr(request.state, "request_id", None)}
             if self.expose_details:
                 content["error_type"] = type(exc).__name__
             return JSONResponse(content, status_code=500)

@@ -6,7 +6,17 @@ redis_client: Optional[Redis] = None
 
 async def init_cache() -> None:
     global redis_client
-    redis_client = Redis.from_url(settings.redis_url, encoding='utf-8', decode_responses=True)
+    # Bound every Redis call: without an explicit timeout a hung or unreachable
+    # Redis could block a request/worker indefinitely. Mirrors the timeouts used
+    # by app.core.redis_state so cache and shared-state behave the same.
+    redis_client = Redis.from_url(
+        settings.redis_url,
+        encoding='utf-8',
+        decode_responses=True,
+        socket_connect_timeout=2,
+        socket_timeout=2,
+        health_check_interval=30,
+    )
 
 async def close_cache() -> None:
     global redis_client
